@@ -1,13 +1,21 @@
 #include <Wire.h>
+#include <Encoder.h>
 
 #define PWM0 3
 #define PWM1 5
+
+#define ENCODER_A 2
+#define ENCODER_B 3
+
+Encoder myEnc(ENCODER_A, ENCODER_B);
 
 
 void setup() {
   Wire.begin(8);                // join i2c bus with address #8
   Wire.onReceive(receiveEvent); // register event
-  Serial.begin(9600);           // start serial for output
+  Wire.onRequest(requestEvent); // register event
+
+  Serial.begin(9600);
   pinMode(13, OUTPUT);
   pinMode(PWM0, OUTPUT);
   pinMode(PWM1, OUTPUT);
@@ -15,9 +23,9 @@ void setup() {
 
 void loop() {
   digitalWrite(13, HIGH);
-  delay(50);
+  delay(500);
   digitalWrite(13, LOW);
-  delay(50);
+  delay(500);
 }
 
 void setPwm(unsigned char pwm, unsigned char dir){
@@ -26,8 +34,7 @@ void setPwm(unsigned char pwm, unsigned char dir){
     digitalWrite(PWM1,0);
     Serial.print("pwm ");
     Serial.print(pwm);
-    Serial.println(", 0");
-    
+    Serial.println(", 0");   
     
   } else {
     analogWrite(PWM1,pwm);
@@ -39,28 +46,32 @@ void setPwm(unsigned char pwm, unsigned char dir){
 
 char reg=0x0;
 
-// function that executes whenever data is received from master
-// this function is registered as an event, see setup()
 void receiveEvent(int howMany) {
   if (howMany) reg = Wire.read();
-  //Serial.print("cmd ");
-  //Serial.println((int)reg);
+  
   switch(reg){
-  case 0x0:
-    
+  case 0x1:
     if (Wire.available() != 2) break;
     unsigned char pwm = Wire.read();
     unsigned char dir = Wire.read();
     setPwm(pwm, dir);
-    
-    
+    break;
+
+  case 0x2:
+    long value = 0;
+    int shift = 0;
+    while ()
+    if (Wire.available()) value = Wire.read() << 24;
+)
+  default:
+    break;
   }
+  // flush read buffer
+  while (Wire.available()) Wire.read();
   
-  /*
-  while (1 < Wire.available()) { // loop through all but the last
-    char c = Wire.read(); // receive byte as a character
-    Serial.print(c);         // print the character
-  }
-  int x = Wire.read();    // receive byte as an integer
-  Serial.println(x);         // print the integer*/
+}
+
+void requestEvent() {
+  long value = myEnc.read();
+  Wire.write((uint8_t *)(&value), 4);
 }
