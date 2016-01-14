@@ -1,8 +1,10 @@
 #include <Wire.h>
+#define ENCODER_DO_NOT_USE_INTERRUPTS
 #include <Encoder.h>
+#include <TimerOne.h>
 
-#define PWM0 3
-#define PWM1 5
+#define PWM0 9
+#define PWM1 10
 
 #define ENCODER_A 2
 #define ENCODER_B 3
@@ -15,10 +17,13 @@ void setup() {
   Wire.onReceive(receiveEvent); // register event
   Wire.onRequest(requestEvent); // register event
 
+  Timer1.initialize(40);  // 40 us = 25 kHz
+  Timer1.pwm(PWM0,0);
+  Timer1.pwm(PWM1,0);
+
   Serial.begin(9600);
+  Serial.println("go go");
   pinMode(13, OUTPUT);
-  pinMode(PWM0, OUTPUT);
-  pinMode(PWM1, OUTPUT);
 }
 
 void loop() {
@@ -28,41 +33,45 @@ void loop() {
   delay(500);
 }
 
-void setPwm(unsigned char pwm, unsigned char dir){
-  if (dir){
-    analogWrite(PWM0,pwm);
-    digitalWrite(PWM1,0);
-    Serial.print("pwm ");
-    Serial.print(pwm);
-    Serial.println(", 0");   
-    
+void setPwm(short int pwm){
+  Serial.print("pwm ");
+  Serial.println(pwm);
+  if (pwm >= 0){
+    Timer1.setPwmDuty(PWM1,0);
+    Timer1.setPwmDuty(PWM0,pwm);    
   } else {
-    analogWrite(PWM1,pwm);
-    digitalWrite(PWM0,0);
-    Serial.print("pwm 0, ");
-    Serial.println(pwm);
+    Timer1.setPwmDuty(PWM0,0);
+    Timer1.setPwmDuty(PWM1,-pwm);
   }
+}
+
+void reset(long value){
+  myEnc.write(value);
+  Serial.print("reset ");
+  Serial.println(value);
 }
 
 char reg=0x0;
 
 void receiveEvent(int howMany) {
   if (howMany) reg = Wire.read();
-  
   switch(reg){
-  case 0x1:
-    if (Wire.available() != 2) break;
-    unsigned char pwm = Wire.read();
-    unsigned char dir = Wire.read();
-    setPwm(pwm, dir);
+  case 0x1:{
+    if (howMany != 3) break;
+    short int pwm = (short int)Wire.read() | (short int)Wire.read() << 8;
+    setPwm(pwm);
     break;
+  }
 
-  case 0x2:
+  case 0x2:{
     long value = 0;
     int shift = 0;
-    while ()
-    if (Wire.available()) value = Wire.read() << 24;
-)
+    if (howMany != 5) break;
+    value = (long)Wire.read() | (long)Wire.read() << 8 | (long)Wire.read() << 16 | (long)Wire.read() << 24;
+    reset(value);
+    break;
+  }
+
   default:
     break;
   }
@@ -72,6 +81,7 @@ void receiveEvent(int howMany) {
 }
 
 void requestEvent() {
-  long value = myEnc.read();
+  long value = myEnc.encoder.position;
+  Serial.print("pos ");Serial.println(value);
   Wire.write((uint8_t *)(&value), 4);
 }
