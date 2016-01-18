@@ -35,15 +35,15 @@ inline void initMotor(uint8_t pwm_pin, uint8_t dir1_pin, uint8_t dir2_pin) {
 }
 
 void setup() {
-  Wire.begin(I2C_ADDRESS);                // join i2c bus with address #8
-  Wire.onReceive(receiveEvent); // register event
-  Wire.onRequest(requestEvent); // register event
-
   Timer1.initialize(40);  // 40 us = 25 kHz
   initMotor(A_EN_PWM, A_DIR_1, A_DIR_2);
 #ifdef USE_MOTOR_B
   initMotor(B_EN_PWM, B_DIR_1, B_DIR_2);
 #endif
+
+  Wire.begin(I2C_ADDRESS);                // join i2c bus with address #8
+  Wire.onReceive(receiveEvent); // register event
+  Wire.onRequest(requestEvent); // register event
 
   Serial.begin(9600);
   Serial.println("go go");
@@ -69,6 +69,29 @@ inline void setPwm(short int pwm, uint8_t pwm_pin, uint8_t dir1_pin, uint8_t dir
   Timer1.setPwmDuty(pwm_pin,pwm);
 }
 
+short int readShort() {
+    union u_long {
+    byte b[2];
+    short int sval;
+  } u;
+  u.b[0] = Wire.read();
+  u.b[1] = Wire.read();
+  return u.sval;
+}
+
+
+long readLong() {
+    union u_long {
+    byte b[4];
+    long lval;
+  } u;
+  u.b[0] = Wire.read();
+  u.b[1] = Wire.read();
+  u.b[2] = Wire.read();
+  u.b[3] = Wire.read();
+  return u.lval;
+}
+
 #define CMD_PWM_AB 0x1
 #define CMD_PWM_B  0x2
 #define CMD_RST_AB 0x3
@@ -76,8 +99,6 @@ inline void setPwm(short int pwm, uint8_t pwm_pin, uint8_t dir1_pin, uint8_t dir
 char reg = 0x0;
 
 void receiveEvent(int howMany) {
-  short int pwm;
-  long value;
   // force encoder update to prevent loosing step
   myEncA.read();
 #ifdef USE_MOTOR_B
@@ -87,30 +108,27 @@ void receiveEvent(int howMany) {
   switch(reg){
   case CMD_PWM_AB:
     if (howMany < 3) break;
-    pwm = (short int)Wire.read() | (short int)Wire.read() << 8;
-    setPwm(pwm, A_EN_PWM, A_DIR_1, A_DIR_2);
+    setPwm(readShort(), A_EN_PWM, A_DIR_1, A_DIR_2);
     howMany -= 2;
     // no beak;
-    
-  case CMD_PWM_B:
+
 #ifdef USE_MOTOR_B
+  case CMD_PWM_B:
     if (howMany < 3) break;
-    pwm = (short int)Wire.read() | (short int)Wire.read() << 8;
-    setPwm(pwm, B_EN_PWM, B_DIR_1, B_DIR_2);
+    setPwm(readShort(), B_EN_PWM, B_DIR_1, B_DIR_2);
 #endif
     break;
 
   case CMD_RST_AB:
     if (howMany < 5) break;
-    value = (long)Wire.read() | (long)Wire.read() << 8 | (long)Wire.read() << 16 | (long)Wire.read() << 24;
-    myEncA.write(value);
+    myEncA.write(readLong());
     howMany -= 4;
     // no beak;
 
-  case CMD_RST_B:
 #ifdef USE_MOTOR_B
-    value = (long)Wire.read() | (long)Wire.read() << 8 | (long)Wire.read() << 16 | (long)Wire.read() << 24;
-    myEncB.write(value);
+  case CMD_RST_B:
+    if (howMany < 5) break;
+    myEncB.write(readLong());
 #endif
     break;
     
