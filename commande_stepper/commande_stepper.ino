@@ -133,71 +133,78 @@ void handleTask() {
   DEBUG_PRINT("handle task ");
   DEBUG_PRINTLN((int)*buff_ptr);
   switch(*buff_ptr++){
-  case CMD_MOVE_TO_AB:
+  case CMD_MOVE_TO_A:
     if (t.len < 5) break;
     stepperA.moveTo(readLong(buff_ptr));
-    buff_ptr += 4; t.len -= 4;
+    buff_ptr += 4;
+    t.len -= 4;
     // no beak;
-
+#ifdef USE_MOTOR_B
   case CMD_MOVE_TO_B:
     if (t.len < 5) break;
     stepperB.moveTo(readLong(buff_ptr));
+#endif;
     break;
 
-  case CMD_MOVE_AB:
+  case CMD_MOVE_A:
     if (t.len < 5) break;
     stepperA.move(readLong(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
     // no beak;
-
+#ifdef USE_MOTOR_B
   case CMD_MOVE_B:
     if (t.len < 5) break;
     stepperB.move(readLong(buff_ptr));
+#endif;
     break;
 
-  case CMD_STOP_AB:
+  case CMD_STOP_A:
     stepperA.stop();
     if (t.len < 2) break;
-
+#ifdef USE_MOTOR_B
   case CMD_STOP_B:
     stepperB.stop();
+#endif;
     break;
 
-  case CMD_MAX_SPEED_AB:
+  case CMD_MAX_SPEED_A:
     if (t.len < 5) break;
     stepperA.setMaxSpeed(readFloat(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
     // no beak;
-
+#ifdef USE_MOTOR_B
   case CMD_MAX_SPEED_B:
     if (t.len < 5) break;
     stepperB.setMaxSpeed(readFloat(buff_ptr));
+#endif;
     break;
 
-  case CMD_ACC_AB:
+  case CMD_ACC_A:
     if (t.len < 5) break;
     stepperA.setAcceleration(readFloat(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
     // no beak;
-
+#ifdef USE_MOTOR_B
   case CMD_ACC_B:
     if (t.len < 5) break;
     stepperB.setAcceleration(readFloat(buff_ptr));
+#endif;
     break;
-    
-  case CMD_SET_POS_AB:
+
+  case CMD_SET_POS_A:
     if (t.len < 5) break;
     stepperA.setCurrentPosition(readLong(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
     // no beak;
-
+#ifdef USE_MOTOR_B
   case CMD_SET_POS_B:
     if (t.len < 5) break;
     stepperB.setCurrentPosition(readLong(buff_ptr));
+#endif;
     break;
 
   default:
@@ -206,27 +213,41 @@ void handleTask() {
 }
 
 //read request
-#define CMD_MOT_POS    0x11
+#define GET_MOT_POS_A    0x11
+#define GET_MOT_POS_B    0x12
+#define GET_ENC_POS_A    0x13
+#define GET_ENC_POS_B    0x14
 
 void requestEvent() {
   
-  long valueA, valueB;
+  long value;
   switch(reg){
-    case CMD_MOT_POS:
-    default:
-    valueA = stepperA.currentPosition();
-    valueB = stepperB.currentPosition();
-    DEBUG_PRINT("posA ");DEBUG_PRINTLN(valueA);
-    DEBUG_PRINT("posB ");DEBUG_PRINTLN(valueB);
-    Wire.write((uint8_t *)(&valueA), 4);
-    Wire.write((uint8_t *)(&valueB), 4);
-
-    valueA = myEncA.read();
-    valueB = myEncB.read();
-    DEBUG_PRINT("encA ");DEBUG_PRINTLN(valueA);
-    DEBUG_PRINT("encB ");DEBUG_PRINTLN(valueB);
-    Wire.write((uint8_t *)(&valueA), 4);
-    Wire.write((uint8_t *)(&valueB), 4);
+  case GET_MOT_POS_A:
+    value = stepperA.currentPosition();
+    DEBUG_PRINT("posA ");DEBUG_PRINTLN(value);
+    Wire.write((uint8_t *)(&value), 4);
+    // no break
+   
+#ifdef USE_MOTOR_B
+  case GET_MOT_POS_B:
+    value = stepperB.currentPosition();
+    DEBUG_PRINT("posB ");DEBUG_PRINTLN(value);
+    Wire.write((uint8_t *)(&value), 4);
+#endif;
+    break;
+    
+  case GET_MOT_POS_A:
+    value = myEncA.read();
+    DEBUG_PRINT("encA ");DEBUG_PRINTLN(value);
+    Wire.write((uint8_t *)(&value), 4);
+    // no break
+   
+#ifdef USE_MOTOR_B
+  case GET_MOT_POS_B:
+    value = myEncB.read();
+    DEBUG_PRINT("encB ");DEBUG_PRINTLN(value);
+    Wire.write((uint8_t *)(&value), 4);
+#endif;
     break;
   }
 }
