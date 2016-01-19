@@ -1,8 +1,12 @@
+#include <TimerOne.h>
+
 #include <Wire.h>
 
 #define I2C_ADDRESS 9
 
 void setup() {
+  Timer1.initialize(80);
+  Timer1.pwm(9, 512);
   pinMode(13, OUTPUT);
   Wire.begin();        // join i2c bus (address optional for master)
 }
@@ -92,8 +96,8 @@ long readLong() {
 }
 
 int getPosition(long *postionA, long *postionB, long *encoderA, long *encoderB) {
-  Wire.requestFrom(I2C_ADDRESS, 16);
-  if (Wire.available() != 16) return -1;
+  Wire.requestFrom(I2C_ADDRESS, 8);
+  if (Wire.available() != 8) return -1;
   *postionA = readLong();
   *postionB = readLong();
   *encoderA = readLong();
@@ -108,24 +112,32 @@ void blink() {
 }
 
 char dir = 0;
-long value = 0;
+long value = 0;/*
 void loop() {
 long postionA, postionB, encoderA, encoderB;
 
 blink();
-moveTo(1000, 1000);
+moveTo(6000, 6000);
 blink();
-move(1000, 1000);
+delay(6000);
+move(8000, 8000);
 blink();
+delay(6000);
 stop();
 blink();
-setMaxSpeed(500.0, 500.0);
-blink();
-setAcceleration(100.0, 100.0);
-blink();
-setCurrentPosition(1000, 1000);
-blink();
+
 getPosition(&postionA, &postionB, &encoderA, &encoderB);
 blink();
+}*/
+/*
+float v = 10.0;
+void loop() {
+  setAcceleration(v, v);
+  v += 1.0;
+}*/
+
+void loop() {
+  long postionA, postionB, encoderA, encoderB;
+  getPosition(&postionA, &postionB, &encoderA, &encoderB);
 }
 

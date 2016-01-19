@@ -4,7 +4,7 @@
 #include <Encoder.h>
 #include "CircularBuffer.h"
 
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
   #define DEBUG_PRINT(x) Serial.print(x)
@@ -25,15 +25,17 @@
 
 #define A_ENCODER_A 2
 #define A_ENCODER_B 4
-  
+
+AccelStepper stepperA(AccelStepper::DRIVER, A_STEPPER_DIR_PIN, A_STEPPER_DIR_PIN);
+Encoder myEncA(A_ENCODER_A, A_ENCODER_B);
+
+#ifdef USE_MOTOR_B
 #define B_ENCODER_A 3
 #define B_ENCODER_B 5
 
-AccelStepper stepperA(AccelStepper::DRIVER, A_STEPPER_DIR_PIN, A_STEPPER_DIR_PIN);
 AccelStepper stepperB(AccelStepper::DRIVER, B_STEPPER_STEP_PIN, B_STEPPER_DIR_PIN);
-
-Encoder myEncA(A_ENCODER_A, A_ENCODER_B);
 Encoder myEncB(B_ENCODER_A, B_ENCODER_B);
+#endif
 
 #define STEP_PER_REVOLTUTION 800.0
 #define ACCELERATION 800.0
@@ -45,10 +47,10 @@ void setup() {
   // 1/4 step : 800 step per revolution
   stepperA.setMaxSpeed(2.5 * STEP_PER_REVOLTUTION);
   stepperA.setAcceleration(ACCELERATION);
-
+#ifdef USE_MOTOR_B
   stepperB.setMaxSpeed(2.5 * STEP_PER_REVOLTUTION);
   stepperB.setAcceleration(ACCELERATION);
-
+#endif
   Wire.begin(I2C_ADDRESS);      // join i2c bus with address #8
   Wire.onReceive(receiveEvent); // register event
   Wire.onRequest(requestEvent); // register event
@@ -62,9 +64,11 @@ struct Task {
 CircularBuffer<Task,10> c_buff;
 
 void loop() {
-    stepperA.run();
-    stepperB.run();
-    handleTask();
+  stepperA.run();
+#ifdef USE_MOTOR_B
+  stepperB.run();
+#endif
+  handleTask();
 }
 
 float readFloat(uint8_t* buff) {
@@ -91,17 +95,17 @@ long readLong(uint8_t* buff) {
   return u.lval;
 }
 
-#define CMD_MOVE_TO_AB   0x1
+#define CMD_MOVE_TO_A    0x1
 #define CMD_MOVE_TO_B    0x2
-#define CMD_MOVE_AB      0x3
+#define CMD_MOVE_A       0x3
 #define CMD_MOVE_B       0x4
-#define CMD_STOP_AB      0x5
+#define CMD_STOP_A       0x5
 #define CMD_STOP_B       0x6
-#define CMD_MAX_SPEED_AB 0x7
+#define CMD_MAX_SPEED_A  0x7
 #define CMD_MAX_SPEED_B  0x8
-#define CMD_ACC_AB       0x9
+#define CMD_ACC_A        0x9
 #define CMD_ACC_B        0xA
-#define CMD_SET_POS_AB   0xB
+#define CMD_SET_POS_A    0xB
 #define CMD_SET_POS_B    0xC
 char reg = 0x0;
 
@@ -112,10 +116,10 @@ void receiveEvent(int howMany) {
   myEncB.read();
   if (!howMany) return;
   Task* t = c_buff.push();
-  if (howMany <= 16)
+  if (howMany <= 15)
     t->len = howMany;
   else
-    t->len = 16;
+    t->len = 15;
   for(int i = 0; i < t->len; i++) {
       t->buffer[i] = Wire.read();
   }
