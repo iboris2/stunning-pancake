@@ -1,8 +1,8 @@
 #include <AccelStepper.h>
-#include <MultiStepper.h>
 #include <Wire.h>
 #include <Encoder.h>
 #include "CircularBuffer.h"
+#include <avr/io.h>
 
 //#define DEBUG
 
@@ -16,20 +16,20 @@
 
 #define I2C_ADDRESS 9
 
-// The X Stepper pins
 #define A_STEPPER_DIR_PIN 7
-#define A_STEPPER1_STEP_PIN 8
-// The Y stepper pins
-#define B_STEPPER_DIR_PIN 9
-#define B_STEPPER_STEP_PIN 10
+#define A_STEPPER_STEP_PIN 8
 
 #define A_ENCODER_A 2
 #define A_ENCODER_B 4
 
-AccelStepper stepperA(AccelStepper::DRIVER, A_STEPPER_DIR_PIN, A_STEPPER_DIR_PIN);
+AccelStepper stepperA(AccelStepper::DRIVER, A_STEPPER_STEP_PIN, A_STEPPER_DIR_PIN);
 Encoder myEncA(A_ENCODER_A, A_ENCODER_B);
 
 #ifdef USE_MOTOR_B
+
+#define B_STEPPER_DIR_PIN 9
+#define B_STEPPER_STEP_PIN 10
+
 #define B_ENCODER_A 3
 #define B_ENCODER_B 5
 
@@ -52,6 +52,7 @@ void setup() {
   stepperB.setAcceleration(ACCELERATION);
 #endif
   Wire.begin(I2C_ADDRESS);      // join i2c bus with address #8
+  TWAR |= 1; /* enable General Call Recognition, used to synchronise steppers */
   Wire.onReceive(receiveEvent); // register event
   Wire.onRequest(requestEvent); // register event
 }
@@ -106,24 +107,47 @@ long readLong(uint8_t* buff) {
 #define CMD_ACC_A        0x9
 #define CMD_ACC_B        0xA
 #define CMD_SET_POS_A    0xB
-#define CMD_SET_POS_B    0xC
-char reg = 0x0;
+#define CMD_SET_ENC_A    0xC
+#define CMD_SET_POS_B    0xD
+#define CMD_SET_ENC_B    0xE
+
+#define CMD_STORE_POS    0xAA
+unsigned char reg = 0x0;
+
+volatile long storedEncA = 0;
+volatile long storedPosA = 0;
+
+volatile long storedEncB = 0;
+volatile long storedPosB = 0;
 
 void receiveEvent(int howMany) {
   long value;
-  // force encoder update to prevent loosing step
+  /* force encoder update to prevent loosing step */
   myEncA.read();
+#ifdef USE_MOTOR_B
   myEncB.read();
+#endif
   if (!howMany) return;
+  reg = Wire.read();
+  if (reg == CMD_STORE_POS) {/* broadcasted to all i2c slaves */
+    storedEncA = myEncA.read();
+    storedPosA = stepperA.currentPosition();
+#ifdef USE_MOTOR_B
+    storedEncB = myEncB.read();
+    storedPosB = stepperB.currentPosition();
+#endif
+    return;
+  }
+  if (reg > CMD_SET_ENC_B) return; /* read register */
   Task* t = c_buff.push();
   if (howMany <= 15)
     t->len = howMany;
   else
     t->len = 15;
-  for(int i = 0; i < t->len; i++) {
+  t->buffer[0] = reg;
+  for(int i = 1; i < t->len; i++) {
       t->buffer[i] = Wire.read();
   }
-  reg = t->buffer[0];
 }
 
 void handleTask() {
@@ -138,12 +162,12 @@ void handleTask() {
     stepperA.moveTo(readLong(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
-    // no beak;
+    /* no break */
 #ifdef USE_MOTOR_B
   case CMD_MOVE_TO_B:
     if (t.len < 5) break;
     stepperB.moveTo(readLong(buff_ptr));
-#endif;
+#endif
     break;
 
   case CMD_MOVE_A:
@@ -151,12 +175,12 @@ void handleTask() {
     stepperA.move(readLong(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
-    // no beak;
+    /* no break */
 #ifdef USE_MOTOR_B
   case CMD_MOVE_B:
     if (t.len < 5) break;
     stepperB.move(readLong(buff_ptr));
-#endif;
+#endif
     break;
 
   case CMD_STOP_A:
@@ -165,7 +189,7 @@ void handleTask() {
 #ifdef USE_MOTOR_B
   case CMD_STOP_B:
     stepperB.stop();
-#endif;
+#endif
     break;
 
   case CMD_MAX_SPEED_A:
@@ -173,12 +197,12 @@ void handleTask() {
     stepperA.setMaxSpeed(readFloat(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
-    // no beak;
+    /* no break */
 #ifdef USE_MOTOR_B
   case CMD_MAX_SPEED_B:
     if (t.len < 5) break;
     stepperB.setMaxSpeed(readFloat(buff_ptr));
-#endif;
+#endif
     break;
 
   case CMD_ACC_A:
@@ -186,12 +210,12 @@ void handleTask() {
     stepperA.setAcceleration(readFloat(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
-    // no beak;
+    /* no break */
 #ifdef USE_MOTOR_B
   case CMD_ACC_B:
     if (t.len < 5) break;
     stepperB.setAcceleration(readFloat(buff_ptr));
-#endif;
+#endif
     break;
 
   case CMD_SET_POS_A:
@@ -199,12 +223,26 @@ void handleTask() {
     stepperA.setCurrentPosition(readLong(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
-    // no beak;
+    /* no break */
+
+  case CMD_SET_ENC_A:
+    if (t.len < 5) break;
+    myEncA.write(readLong(buff_ptr));
+    buff_ptr += 4;
+    t.len -= 4;
+    /* no break */
 #ifdef USE_MOTOR_B
   case CMD_SET_POS_B:
     if (t.len < 5) break;
     stepperB.setCurrentPosition(readLong(buff_ptr));
-#endif;
+    buff_ptr += 4;
+    t.len -= 4;
+    /* no break */
+
+  case CMD_SET_ENC_B:
+    if (t.len < 5) break;
+    myEncB.write(readLong(buff_ptr));
+#endif
     break;
 
   default:
@@ -212,42 +250,69 @@ void handleTask() {
   }
 }
 
-//read request
-#define GET_MOT_POS_A    0x11
-#define GET_MOT_POS_B    0x12
-#define GET_ENC_POS_A    0x13
-#define GET_ENC_POS_B    0x14
+/* read request */
+#define CMD_GET_STATUS      0x21
+#define CMD_GET_STORED_DATA 0x22
+#define CMD_GET_ENC_A       0x23
+#define CMD_GET_POS_A       0x24
+#define CMD_GET_ENC_B       0x25
+#define CMD_GET_POS_B       0x26
 
 void requestEvent() {
   
   long value;
-  switch(reg){
-  case GET_MOT_POS_A:
-    value = stepperA.currentPosition();
-    DEBUG_PRINT("posA ");DEBUG_PRINTLN(value);
-    Wire.write((uint8_t *)(&value), 4);
-    // no break
-   
+  /* force encoder update to prevent loosing step */
+  myEncA.read();
 #ifdef USE_MOTOR_B
-  case GET_MOT_POS_B:
-    value = stepperB.currentPosition();
-    DEBUG_PRINT("posB ");DEBUG_PRINTLN(value);
-    Wire.write((uint8_t *)(&value), 4);
-#endif;
+  myEncB.read();
+#endif
+  switch(reg){
+  case CMD_GET_STATUS:
+    value = 0;
+    if (stepperA.isRunning())
+      value = 1;
+#ifdef USE_MOTOR_B
+    if (stepperB.isRunning())
+      value |= 2;
+#endif    
+    Wire.write(value);
+    DEBUG_PRINT("stat ");DEBUG_PRINTLN((int)value);
+    /* no break */
+  case CMD_GET_STORED_DATA:
+    Wire.write((uint8_t *)(&storedEncA), 4);
+    Wire.write((uint8_t *)(&storedPosA), 4);
+    DEBUG_PRINT("SencA ");DEBUG_PRINTLN(storedEncA);
+    DEBUG_PRINT("SposA ");DEBUG_PRINTLN(storedPosA);
+#ifdef USE_MOTOR_B
+    Wire.write((uint8_t *)(&storedEncB), 4);
+    Wire.write((uint8_t *)(&storedPosB), 4);
+#endif
     break;
-    
-  case GET_MOT_POS_A:
+
+  case CMD_GET_ENC_A:
     value = myEncA.read();
     DEBUG_PRINT("encA ");DEBUG_PRINTLN(value);
     Wire.write((uint8_t *)(&value), 4);
-    // no break
+    /* no break */
+
+  case CMD_GET_POS_A:
+    value = stepperA.currentPosition();
+    DEBUG_PRINT("posA ");DEBUG_PRINTLN(value);
+    Wire.write((uint8_t *)(&value), 4);
+    /* no break */
    
 #ifdef USE_MOTOR_B
-  case GET_MOT_POS_B:
+  case CMD_GET_ENC_B:
     value = myEncB.read();
     DEBUG_PRINT("encB ");DEBUG_PRINTLN(value);
     Wire.write((uint8_t *)(&value), 4);
-#endif;
+    /* no break */
+
+  case CMD_GET_POS_B:
+    value = stepperB.currentPosition();
+    DEBUG_PRINT("posB ");DEBUG_PRINTLN(value);
+    Wire.write((uint8_t *)(&value), 4);
+#endif
     break;
   }
 }
