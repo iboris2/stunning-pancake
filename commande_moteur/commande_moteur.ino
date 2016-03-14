@@ -2,7 +2,7 @@
 #include <Encoder.h>
 #include <TimerOne.h>
 
-#define I2C_ADDRESS 8
+#define I2C_ADDRESS 10
 
 #define USE_MOTOR_B
 // motor A
@@ -10,8 +10,8 @@
 #define A_DIR_1 7
 #define A_DIR_2 8
 
-#define A_ENCODER_A 2
-#define A_ENCODER_B 4
+#define A_ENCODER_A 3
+#define A_ENCODER_B 5
 
 // motor B
 #ifdef USE_MOTOR_B
@@ -19,8 +19,8 @@
   #define B_DIR_1 11
   #define B_DIR_2 12
   
-  #define B_ENCODER_A 3
-  #define B_ENCODER_B 5
+  #define B_ENCODER_A 2
+  #define B_ENCODER_B 4
 #endif
 
 Encoder myEncA(A_ENCODER_A, A_ENCODER_B);
@@ -49,10 +49,9 @@ void setup() {
   Serial.println("go go");
   pinMode(13, OUTPUT);
 }
-
+int pos=0;
+unsigned int cnt;
 void loop() {
-  delay(50);
-  Serial.println(myEncA.read());
 }
 
 inline void setPwm(short int pwm, uint8_t pwm_pin, uint8_t dir1_pin, uint8_t dir2_pin) {
@@ -98,8 +97,15 @@ long readLong() {
 #define CMD_RST_B  0x4
 char reg = 0x0;
 
+void toogle() {
+  static uint8_t toogleLed;
+  digitalWrite(13, toogleLed);
+  toogleLed = ~toogleLed;
+}
+
 void receiveEvent(int howMany) {
   // force encoder update to prevent loosing step
+  toogle();
   myEncA.read();
 #ifdef USE_MOTOR_B
   myEncB.read();
@@ -138,12 +144,11 @@ void receiveEvent(int howMany) {
 }
 
 void requestEvent() {
+  toogle();
   long valueA = myEncA.encoder.position;
-  Serial.print("posA ");Serial.println(valueA);
   Wire.write((uint8_t *)(&valueA), 4);
 #ifdef USE_MOTOR_B
   long valueB = myEncB.encoder.position;
-  Serial.print("posB ");Serial.println(valueB);
   Wire.write((uint8_t *)(&valueB), 4);
 #endif
 }
