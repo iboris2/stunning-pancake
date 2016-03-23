@@ -16,45 +16,56 @@
 
 #define I2C_ADDRESS 9
 
-#define A_STEPPER_DIR_PIN 7
-#define A_STEPPER_STEP_PIN 8
+#define A_STEPPER_DIR_PIN 9     // gris dir
+#define A_STEPPER_STEP_PIN 11   // jaune clock
+#define A_STEPPER_EN_PIN 10     // marron en
 
 #define A_ENCODER_A 2
 #define A_ENCODER_B 4
 
 AccelStepper stepperA(AccelStepper::DRIVER, A_STEPPER_STEP_PIN, A_STEPPER_DIR_PIN);
-Encoder myEncA(A_ENCODER_A, A_ENCODER_B);
+//Encoder myEncA(A_ENCODER_A, A_ENCODER_B);
+
+#define USE_MOTOR_B
 
 #ifdef USE_MOTOR_B
-
-#define B_STEPPER_DIR_PIN 9
-#define B_STEPPER_STEP_PIN 10
+#define B_STEPPER_DIR_PIN 7     // gris dir
+#define B_STEPPER_STEP_PIN 5   // jaune clock
+#define B_STEPPER_EN_PIN 6     // marron en
 
 #define B_ENCODER_A 3
-#define B_ENCODER_B 5
+#define B_ENCODER_B 8
 
 AccelStepper stepperB(AccelStepper::DRIVER, B_STEPPER_STEP_PIN, B_STEPPER_DIR_PIN);
 Encoder myEncB(B_ENCODER_A, B_ENCODER_B);
 #endif
 
-#define STEP_PER_REVOLTUTION 800.0
-#define ACCELERATION 800.0
+#define STEP_PER_REVOLTUTION 400.0
+#define ACCELERATION 1600.0
 
 void setup() {
 #ifdef DEBUG
   Serial.begin(9600);
 #endif
   // 1/4 step : 800 step per revolution
-  stepperA.setMaxSpeed(2.5 * STEP_PER_REVOLTUTION);
+  stepperA.setMaxSpeed(2.7 * STEP_PER_REVOLTUTION);
   stepperA.setAcceleration(ACCELERATION);
+  stepperA.setEnablePin(A_STEPPER_EN_PIN);
+  stepperA.setPinsInverted(false, false, true);
+  stepperA.enableOutputs();
 #ifdef USE_MOTOR_B
-  stepperB.setMaxSpeed(2.5 * STEP_PER_REVOLTUTION);
+  stepperB.setMaxSpeed(2.7 * STEP_PER_REVOLTUTION);
   stepperB.setAcceleration(ACCELERATION);
+  stepperA.setEnablePin(B_STEPPER_EN_PIN);
+  stepperA.setPinsInverted(false, false, true);
+  stepperB.enableOutputs();
 #endif
   Wire.begin(I2C_ADDRESS);      // join i2c bus with address #8
   TWAR |= 1; /* enable General Call Recognition, used to synchronise steppers */
   Wire.onReceive(receiveEvent); // register event
   Wire.onRequest(requestEvent); // register event
+   stepperA.moveTo(10000);
+   stepperB.moveTo(10000);
 }
 
 struct Task {
@@ -110,6 +121,8 @@ long readLong(uint8_t* buff) {
 #define CMD_SET_ENC_A    0xC
 #define CMD_SET_POS_B    0xD
 #define CMD_SET_ENC_B    0xE
+#define CMD_ENABLE_A     0xF
+#define CMD_ENABLE_B     0x10
 
 #define CMD_STORE_POS    0xAA
 unsigned char reg = 0x0;
@@ -123,17 +136,17 @@ volatile long storedPosB = 0;
 void receiveEvent(int howMany) {
   long value;
   /* force encoder update to prevent loosing step */
-  myEncA.read();
+  //myEncA.read();
 #ifdef USE_MOTOR_B
-  myEncB.read();
+  //myEncB.read();
 #endif
   if (!howMany) return;
   reg = Wire.read();
   if (reg == CMD_STORE_POS) {/* broadcasted to all i2c slaves */
-    storedEncA = myEncA.read();
+    //storedEncA = myEncA.read();
     storedPosA = stepperA.currentPosition();
 #ifdef USE_MOTOR_B
-    storedEncB = myEncB.read();
+    //storedEncB = myEncB.read();
     storedPosB = stepperB.currentPosition();
 #endif
     return;
@@ -156,7 +169,8 @@ void handleTask() {
   uint8_t* buff_ptr = t.buffer;
   DEBUG_PRINT("handle task ");
   DEBUG_PRINTLN((int)*buff_ptr);
-  switch(*buff_ptr++){
+  int cmd = *buff_ptr++;
+  switch(cmd){
   case CMD_MOVE_TO_A:
     if (t.len < 5) break;
     stepperA.moveTo(readLong(buff_ptr));
@@ -227,7 +241,7 @@ void handleTask() {
 
   case CMD_SET_ENC_A:
     if (t.len < 5) break;
-    myEncA.write(readLong(buff_ptr));
+    //myEncA.write(readLong(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
     /* no break */
@@ -241,7 +255,7 @@ void handleTask() {
 
   case CMD_SET_ENC_B:
     if (t.len < 5) break;
-    myEncB.write(readLong(buff_ptr));
+    //myEncB.write(readLong(buff_ptr));
 #endif
     break;
 
@@ -262,9 +276,9 @@ void requestEvent() {
   
   long value;
   /* force encoder update to prevent loosing step */
-  myEncA.read();
+  //myEncA.read();
 #ifdef USE_MOTOR_B
-  myEncB.read();
+  //myEncB.read();
 #endif
   switch(reg){
   case CMD_GET_STATUS:
@@ -290,7 +304,7 @@ void requestEvent() {
     break;
 
   case CMD_GET_ENC_A:
-    value = myEncA.read();
+    //value = myEncA.read();
     DEBUG_PRINT("encA ");DEBUG_PRINTLN(value);
     Wire.write((uint8_t *)(&value), 4);
     /* no break */
@@ -303,7 +317,7 @@ void requestEvent() {
    
 #ifdef USE_MOTOR_B
   case CMD_GET_ENC_B:
-    value = myEncB.read();
+    //value = myEncB.read();
     DEBUG_PRINT("encB ");DEBUG_PRINTLN(value);
     Wire.write((uint8_t *)(&value), 4);
     /* no break */

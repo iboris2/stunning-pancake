@@ -109,12 +109,12 @@ void loop() {
     Serial.write('1');
   }
   delay(100);Motor_X.pwm(0);Motor_Y.pwm(0);
-  /*Serial.print("Z: ");
+  Serial.print("Z: ");
   Serial.println(Motor_Z.position());
   Serial.print("X: ");
   Serial.println(Motor_X.position());
   Serial.print("Y: ");
-  Serial.println(Motor_Y.position());*/
+  Serial.println(Motor_Y.position());
 }
 
 

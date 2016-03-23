@@ -2,7 +2,7 @@
 #include <Encoder.h>
 #include <TimerOne.h>
 
-#define I2C_ADDRESS 10
+#define I2C_ADDRESS 8
 
 #define USE_MOTOR_B
 // motor A
