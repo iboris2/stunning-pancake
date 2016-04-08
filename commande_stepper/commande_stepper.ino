@@ -267,31 +267,26 @@ void handleTask() {
 /* read request */
 #define CMD_GET_STATUS      0x21
 #define CMD_GET_STORED_DATA 0x22
-#define CMD_GET_ENC_A       0x23
-#define CMD_GET_POS_A       0x24
-#define CMD_GET_ENC_B       0x25
-#define CMD_GET_POS_B       0x26
+#define CMD_GET_POS_A       0x23
+#define CMD_GET_POS_B       0x24
 
 void requestEvent() {
   
   long value;
-  /* force encoder update to prevent loosing step */
-  //myEncA.read();
+/* 1st byte is status */
+  value = 0;
+  if (stepperA.isRunning())
+    value = 1;
 #ifdef USE_MOTOR_B
-  //myEncB.read();
-#endif
+  if (stepperB.isRunning())
+    value |= 2;
+#endif    
+  Wire.write(value);
+  DEBUG_PRINT("stat ");DEBUG_PRINTLN((int)value);
+
   switch(reg){
   case CMD_GET_STATUS:
-    value = 0;
-    if (stepperA.isRunning())
-      value = 1;
-#ifdef USE_MOTOR_B
-    if (stepperB.isRunning())
-      value |= 2;
-#endif    
-    Wire.write(value);
-    DEBUG_PRINT("stat ");DEBUG_PRINTLN((int)value);
-    /* no break */
+    break;
   case CMD_GET_STORED_DATA:
     Wire.write((uint8_t *)(&storedEncA), 4);
     Wire.write((uint8_t *)(&storedPosA), 4);
@@ -303,12 +298,6 @@ void requestEvent() {
 #endif
     break;
 
-  case CMD_GET_ENC_A:
-    //value = myEncA.read();
-    DEBUG_PRINT("encA ");DEBUG_PRINTLN(value);
-    Wire.write((uint8_t *)(&value), 4);
-    /* no break */
-
   case CMD_GET_POS_A:
     value = stepperA.currentPosition();
     DEBUG_PRINT("posA ");DEBUG_PRINTLN(value);
@@ -316,12 +305,6 @@ void requestEvent() {
     /* no break */
    
 #ifdef USE_MOTOR_B
-  case CMD_GET_ENC_B:
-    //value = myEncB.read();
-    DEBUG_PRINT("encB ");DEBUG_PRINTLN(value);
-    Wire.write((uint8_t *)(&value), 4);
-    /* no break */
-
   case CMD_GET_POS_B:
     value = stepperB.currentPosition();
     DEBUG_PRINT("posB ");DEBUG_PRINTLN(value);
