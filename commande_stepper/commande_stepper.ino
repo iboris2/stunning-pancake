@@ -48,13 +48,13 @@ void setup() {
   Serial.begin(9600);
 #endif
   // 1/4 step : 800 step per revolution
-  stepperA.setMaxSpeed(2.7 * STEP_PER_REVOLTUTION);
+  stepperA.setMaxSpeed(2.5 * STEP_PER_REVOLTUTION);
   stepperA.setAcceleration(ACCELERATION);
   stepperA.setEnablePin(A_STEPPER_EN_PIN);
   stepperA.setPinsInverted(false, false, true);
   stepperA.enableOutputs();
 #ifdef USE_MOTOR_B
-  stepperB.setMaxSpeed(2.7 * STEP_PER_REVOLTUTION);
+  stepperB.setMaxSpeed(2.5 * STEP_PER_REVOLTUTION);
   stepperB.setAcceleration(ACCELERATION);
   stepperA.setEnablePin(B_STEPPER_EN_PIN);
   stepperA.setPinsInverted(false, false, true);
@@ -118,11 +118,9 @@ long readLong(uint8_t* buff) {
 #define CMD_ACC_A        0x9
 #define CMD_ACC_B        0xA
 #define CMD_SET_POS_A    0xB
-#define CMD_SET_ENC_A    0xC
-#define CMD_SET_POS_B    0xD
-#define CMD_SET_ENC_B    0xE
-#define CMD_ENABLE_A     0xF
-#define CMD_ENABLE_B     0x10
+#define CMD_SET_POS_B    0xC
+#define CMD_ENABLE_A     0xD
+#define CMD_ENABLE_B     0xE
 
 #define CMD_STORE_POS    0xAA
 unsigned char reg = 0x0;
@@ -151,7 +149,7 @@ void receiveEvent(int howMany) {
 #endif
     return;
   }
-  if (reg > CMD_SET_ENC_B) return; /* read register */
+  if (reg > CMD_ENABLE_B) return; /* read register */
   Task* t = c_buff.push();
   if (howMany <= 15)
     t->len = howMany;
@@ -239,12 +237,6 @@ void handleTask() {
     t.len -= 4;
     /* no break */
 
-  case CMD_SET_ENC_A:
-    if (t.len < 5) break;
-    //myEncA.write(readLong(buff_ptr));
-    buff_ptr += 4;
-    t.len -= 4;
-    /* no break */
 #ifdef USE_MOTOR_B
   case CMD_SET_POS_B:
     if (t.len < 5) break;
@@ -252,10 +244,7 @@ void handleTask() {
     buff_ptr += 4;
     t.len -= 4;
     /* no break */
-
-  case CMD_SET_ENC_B:
-    if (t.len < 5) break;
-    //myEncB.write(readLong(buff_ptr));
+    
 #endif
     break;
 
@@ -273,19 +262,18 @@ void handleTask() {
 void requestEvent() {
   
   long value;
-/* 1st byte is status */
-  value = 0;
-  if (stepperA.isRunning())
-    value = 1;
-#ifdef USE_MOTOR_B
-  if (stepperB.isRunning())
-    value |= 2;
-#endif    
-  Wire.write(value);
-  DEBUG_PRINT("stat ");DEBUG_PRINTLN((int)value);
 
   switch(reg){
   case CMD_GET_STATUS:
+    value = 0;
+    if (stepperA.isRunning())
+      value = 1;
+  #ifdef USE_MOTOR_B
+    if (stepperB.isRunning())
+      value |= 2;
+  #endif    
+    Wire.write(value);
+    DEBUG_PRINT("stat ");DEBUG_PRINTLN((int)value);
     break;
   case CMD_GET_STORED_DATA:
     Wire.write((uint8_t *)(&storedEncA), 4);
