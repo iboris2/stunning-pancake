@@ -4,7 +4,7 @@
 #include "CircularBuffer.h"
 #include <avr/io.h>
 
-//#define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
   #define DEBUG_PRINT(x) Serial.print(x)
@@ -52,20 +52,18 @@ void setup() {
   stepperA.setAcceleration(ACCELERATION);
   stepperA.setEnablePin(A_STEPPER_EN_PIN);
   stepperA.setPinsInverted(false, false, true);
-  stepperA.enableOutputs();
+  //stepperA.enableOutputs();
 #ifdef USE_MOTOR_B
   stepperB.setMaxSpeed(2.5 * STEP_PER_REVOLTUTION);
   stepperB.setAcceleration(ACCELERATION);
-  stepperA.setEnablePin(B_STEPPER_EN_PIN);
-  stepperA.setPinsInverted(false, false, true);
-  stepperB.enableOutputs();
+  stepperB.setEnablePin(B_STEPPER_EN_PIN);
+  stepperB.setPinsInverted(false, false, true);
+  //stepperB.enableOutputs();
 #endif
   Wire.begin(I2C_ADDRESS);      // join i2c bus with address #8
-  TWAR |= 1; /* enable General Call Recognition, used to synchronise steppers */
+  //TWAR |= 1; /* enable General Call Recognition, used to synchronise steppers */
   Wire.onReceive(receiveEvent); // register event
   Wire.onRequest(requestEvent); // register event
-   stepperA.moveTo(10000);
-   stepperB.moveTo(10000);
 }
 
 struct Task {
@@ -171,6 +169,7 @@ void handleTask() {
   switch(cmd){
   case CMD_MOVE_TO_A:
     if (t.len < 5) break;
+    stepperA.enableOutputs();
     stepperA.moveTo(readLong(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
@@ -178,12 +177,14 @@ void handleTask() {
 #ifdef USE_MOTOR_B
   case CMD_MOVE_TO_B:
     if (t.len < 5) break;
+    stepperB.enableOutputs();
     stepperB.moveTo(readLong(buff_ptr));
 #endif
     break;
 
   case CMD_MOVE_A:
     if (t.len < 5) break;
+    stepperA.enableOutputs();
     stepperA.move(readLong(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
@@ -191,6 +192,7 @@ void handleTask() {
 #ifdef USE_MOTOR_B
   case CMD_MOVE_B:
     if (t.len < 5) break;
+    stepperB.enableOutputs();
     stepperB.move(readLong(buff_ptr));
 #endif
     break;
@@ -207,6 +209,7 @@ void handleTask() {
   case CMD_MAX_SPEED_A:
     if (t.len < 5) break;
     stepperA.setMaxSpeed(readFloat(buff_ptr));
+    DEBUG_PRINT("speedA ");DEBUG_PRINTLN(readFloat(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
     /* no break */
@@ -214,12 +217,14 @@ void handleTask() {
   case CMD_MAX_SPEED_B:
     if (t.len < 5) break;
     stepperB.setMaxSpeed(readFloat(buff_ptr));
+    DEBUG_PRINT("speedB ");DEBUG_PRINTLN(readFloat(buff_ptr));
 #endif
     break;
 
   case CMD_ACC_A:
     if (t.len < 5) break;
     stepperA.setAcceleration(readFloat(buff_ptr));
+    DEBUG_PRINT("accA ");DEBUG_PRINTLN(readFloat(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
     /* no break */
@@ -227,12 +232,14 @@ void handleTask() {
   case CMD_ACC_B:
     if (t.len < 5) break;
     stepperB.setAcceleration(readFloat(buff_ptr));
+    DEBUG_PRINT("accB ");DEBUG_PRINTLN(readFloat(buff_ptr));
 #endif
     break;
 
   case CMD_SET_POS_A:
     if (t.len < 5) break;
     stepperA.setCurrentPosition(readLong(buff_ptr));
+    DEBUG_PRINT("Set pos A ");DEBUG_PRINTLN(readLong(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
     /* no break */
@@ -241,63 +248,68 @@ void handleTask() {
   case CMD_SET_POS_B:
     if (t.len < 5) break;
     stepperB.setCurrentPosition(readLong(buff_ptr));
+    DEBUG_PRINT("Set pos B ");DEBUG_PRINTLN(readLong(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
-    /* no break */
-    
 #endif
     break;
-
+    
+ case CMD_ENABLE_A:
+    if (t.len < 2) break;
+    if (*buff_ptr)
+      stepperA.enableOutputs();
+    else
+      stepperA.disableOutputs();
+    buff_ptr += 1;
+    t.len -= 1; 
+#ifdef USE_MOTOR_B
+  case CMD_ENABLE_B:
+    if (t.len < 2) break;
+    if (*buff_ptr)
+      stepperB.enableOutputs();
+    else
+      stepperB.disableOutputs();
+#endif
+    break;
   default:
     break;
   }
 }
 
 /* read request */
-#define CMD_GET_STATUS      0x21
-#define CMD_GET_STORED_DATA 0x22
+#define CMD_REMAINING_A     0x21
+#define CMD_REMAINING_B     0x22
 #define CMD_GET_POS_A       0x23
 #define CMD_GET_POS_B       0x24
 
 void requestEvent() {
   
   long value;
-
+  long values[2];
+  long offset=0;
   switch(reg){
-  case CMD_GET_STATUS:
-    value = 0;
-    if (stepperA.isRunning())
-      value = 1;
+  case CMD_REMAINING_A:
+    values[offset++] = stepperA.distanceToGo();
+    DEBUG_PRINT("remain A ");DEBUG_PRINTLN(values[offset-1]);
+    /* no break */
   #ifdef USE_MOTOR_B
-    if (stepperB.isRunning())
-      value |= 2;
+    values[offset++] = stepperB.distanceToGo();
+    DEBUG_PRINT("remain B ");DEBUG_PRINTLN(values[offset-1]);
   #endif    
-    Wire.write(value);
-    DEBUG_PRINT("stat ");DEBUG_PRINTLN((int)value);
-    break;
-  case CMD_GET_STORED_DATA:
-    Wire.write((uint8_t *)(&storedEncA), 4);
-    Wire.write((uint8_t *)(&storedPosA), 4);
-    DEBUG_PRINT("SencA ");DEBUG_PRINTLN(storedEncA);
-    DEBUG_PRINT("SposA ");DEBUG_PRINTLN(storedPosA);
-#ifdef USE_MOTOR_B
-    Wire.write((uint8_t *)(&storedEncB), 4);
-    Wire.write((uint8_t *)(&storedPosB), 4);
-#endif
+    Wire.write((uint8_t *)(values), 4*offset);
     break;
 
   case CMD_GET_POS_A:
-    value = stepperA.currentPosition();
-    DEBUG_PRINT("posA ");DEBUG_PRINTLN(value);
-    Wire.write((uint8_t *)(&value), 4);
+    values[offset++] = stepperA.currentPosition();
+    DEBUG_PRINT("posA ");DEBUG_PRINTLN(values[offset-1]);
     /* no break */
-   
 #ifdef USE_MOTOR_B
   case CMD_GET_POS_B:
-    value = stepperB.currentPosition();
-    DEBUG_PRINT("posB ");DEBUG_PRINTLN(value);
-    Wire.write((uint8_t *)(&value), 4);
+    values[offset++] = stepperB.currentPosition();
+    DEBUG_PRINT("posB ");DEBUG_PRINTLN(values[offset-1]);
+
 #endif
+    Wire.write((uint8_t *)(values), 4*offset);
     break;
   }
 }
