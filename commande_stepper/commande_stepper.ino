@@ -96,20 +96,25 @@ ISR(TIMER1_COMPB_vect)
 {
   static uint8_t step = false;
   static uint8_t dir = 0;
-  if (dir) {
-    digitalWriteFast(B_STEPPER_DIR_PIN, 1);
-  } else {
-    digitalWriteFast(B_STEPPER_DIR_PIN, 0);
-  }
   if (step) {
+    if (dir) {
+     digitalWriteFast(B_STEPPER_DIR_PIN, 1);
+    } else {
+      digitalWriteFast(B_STEPPER_DIR_PIN, 0);
+    }
     digitalWriteFast(B_STEPPER_STEP_PIN, 1);
   }
   struct Command cmd;
   step = pull(&stepBuffB, &cmd);
-  if (cmd.dir_buff == 255) step = 0;
-  if (step) {
-    OCR1B += cmd.step_buff;
-    dir = cmd.dir_buff;
+  if (step == 0)
+    OCR1B += 1000; // then max 0.5 ms latency for nex stepper mov request
+  else {
+    if (cmd.dir_buff == 255)
+      step = 0;
+    else {
+      OCR1B += cmd.step_buff;
+      dir = cmd.dir_buff;
+    }
   }
   digitalWriteFast(B_STEPPER_STEP_PIN, 0);
 }
@@ -118,20 +123,25 @@ ISR(TIMER1_COMPA_vect)
 {
   static uint8_t step = false;
   static uint8_t dir = 0;
-  if (dir) {
-    digitalWriteFast(A_STEPPER_DIR_PIN, 1);
-  } else {
-    digitalWriteFast(A_STEPPER_DIR_PIN, 0);
-  }
-  if (step) {
+   if (step) {
+    if (dir) {
+     digitalWriteFast(A_STEPPER_DIR_PIN, 1);
+    } else {
+      digitalWriteFast(A_STEPPER_DIR_PIN, 0);
+    }
     digitalWriteFast(A_STEPPER_STEP_PIN, 1);
   }
   struct Command cmd;
   step = pull(&stepBuffA, &cmd);
-  if (cmd.dir_buff == 255) step = 0;
-  if (step) {
-    OCR1A += cmd.step_buff;
-    dir = cmd.dir_buff;
+  if (step == 0)
+    OCR1A += 1001; // then max 0.5 ms latency for nex stepper mov request
+  else {
+    if (cmd.dir_buff == 255)
+      step = 0;
+    else {
+        OCR1A += cmd.step_buff;
+        dir = cmd.dir_buff;
+    }
   }
   digitalWriteFast(A_STEPPER_STEP_PIN, 0);
 }
