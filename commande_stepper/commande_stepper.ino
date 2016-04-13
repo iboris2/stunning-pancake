@@ -3,8 +3,9 @@
 #include <Encoder.h>
 #include "CircularBuffer.h"
 #include <avr/io.h>
+#include "digitalWriteFast.h"
 
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
   #define DEBUG_PRINT(x) Serial.print(x)
@@ -23,7 +24,9 @@
 #define A_ENCODER_A 2
 #define A_ENCODER_B 4
 
-AccelStepper stepperA(AccelStepper::DRIVER, A_STEPPER_STEP_PIN, A_STEPPER_DIR_PIN);
+struct CBuffer stepBuffA;
+
+AccelStepper stepperA(&stepBuffA);
 //Encoder myEncA(A_ENCODER_A, A_ENCODER_B);
 
 #define USE_MOTOR_B
@@ -36,25 +39,34 @@ AccelStepper stepperA(AccelStepper::DRIVER, A_STEPPER_STEP_PIN, A_STEPPER_DIR_PI
 #define B_ENCODER_A 3
 #define B_ENCODER_B 8
 
-AccelStepper stepperB(AccelStepper::DRIVER, B_STEPPER_STEP_PIN, B_STEPPER_DIR_PIN);
+struct CBuffer stepBuffB;
+
+AccelStepper stepperB(&stepBuffB);
 Encoder myEncB(B_ENCODER_A, B_ENCODER_B);
 #endif
 
-#define STEP_PER_REVOLTUTION 400.0
-#define ACCELERATION 1600.0
+#define STEP_PER_REVOLTUTION 1600.0
+#define ACCELERATION 400.0
 
 void setup() {
+  pinMode(A_STEPPER_DIR_PIN, OUTPUT);
+  pinMode(A_STEPPER_STEP_PIN,OUTPUT);
+  pinMode(B_STEPPER_DIR_PIN,OUTPUT);
+  pinMode(B_STEPPER_STEP_PIN,OUTPUT);
+
+  init_timerOne();
+
 #ifdef DEBUG
   Serial.begin(9600);
 #endif
   // 1/4 step : 800 step per revolution
-  stepperA.setMaxSpeed(2.5 * STEP_PER_REVOLTUTION);
+  stepperA.setMaxSpeed(1.0 * STEP_PER_REVOLTUTION);
   stepperA.setAcceleration(ACCELERATION);
   stepperA.setEnablePin(A_STEPPER_EN_PIN);
   stepperA.setPinsInverted(false, false, true);
   //stepperA.enableOutputs();
 #ifdef USE_MOTOR_B
-  stepperB.setMaxSpeed(2.5 * STEP_PER_REVOLTUTION);
+  stepperB.setMaxSpeed(1.0 * STEP_PER_REVOLTUTION);
   stepperB.setAcceleration(ACCELERATION);
   stepperB.setEnablePin(B_STEPPER_EN_PIN);
   stepperB.setPinsInverted(false, false, true);
@@ -71,12 +83,66 @@ struct Task {
   uint8_t len;
 };
 
+void init_timerOne()
+{
+  TCCR1A = 0; // _BV(COM1A0)  | _BV(COM1B0) ;
+  TCCR1B = _BV(CS11); // 2mhz
+
+  TIMSK1 = _BV(OCIE1A) | _BV(OCIE1B);
+  TIFR1  = _BV(OCF1A) | _BV(OCF1B);
+}
+
+ISR(TIMER1_COMPB_vect)
+{
+  static uint8_t step = false;
+  static uint8_t dir = 0;
+  if (dir) {
+    digitalWriteFast(B_STEPPER_DIR_PIN, 1);
+  } else {
+    digitalWriteFast(B_STEPPER_DIR_PIN, 0);
+  }
+  if (step) {
+    digitalWriteFast(B_STEPPER_STEP_PIN, 1);
+  }
+  struct Command cmd;
+  step = pull(&stepBuffB, &cmd);
+  if (cmd.dir_buff == 255) step = 0;
+  if (step) {
+    OCR1B += cmd.step_buff;
+    dir = cmd.dir_buff;
+  }
+  digitalWriteFast(B_STEPPER_STEP_PIN, 0);
+}
+
+ISR(TIMER1_COMPA_vect)
+{
+  static uint8_t step = false;
+  static uint8_t dir = 0;
+  if (dir) {
+    digitalWriteFast(A_STEPPER_DIR_PIN, 1);
+  } else {
+    digitalWriteFast(A_STEPPER_DIR_PIN, 0);
+  }
+  if (step) {
+    digitalWriteFast(A_STEPPER_STEP_PIN, 1);
+  }
+  struct Command cmd;
+  step = pull(&stepBuffA, &cmd);
+  if (cmd.dir_buff == 255) step = 0;
+  if (step) {
+    OCR1A += cmd.step_buff;
+    dir = cmd.dir_buff;
+  }
+  digitalWriteFast(A_STEPPER_STEP_PIN, 0);
+}
+
+
 CircularBuffer<Task,10> c_buff;
 
 void loop() {
-  stepperA.run();
+  stepperA.runStepBuffer();
 #ifdef USE_MOTOR_B
-  stepperB.run();
+  stepperB.runStepBuffer();
 #endif
   handleTask();
 }
