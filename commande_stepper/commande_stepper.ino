@@ -208,10 +208,6 @@ volatile long storedPosB = 0;
 void receiveEvent(int howMany) {
   long value;
   /* force encoder update to prevent loosing step */
-  //myEncA.read();
-#ifdef USE_MOTOR_B
-  //myEncB.read();
-#endif
   if (!howMany) return;
   reg = Wire.read();
   if (reg == CMD_STORE_POS) {/* broadcasted to all i2c slaves */
