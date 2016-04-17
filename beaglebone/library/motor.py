@@ -34,10 +34,11 @@ class StepperBlock(object):
     """ 
     2 steppers
     """
-    def __init__(self, i2c):
+    def __init__(self, i2c, slave = SLAVE):
         self.motorA = Stepper(i2c, 'A')
         self.motorB = Stepper(i2c, 'B')
         self.i2c = i2c
+        self.slave = slave
 
         self.CMD_MOVE_TO = CMD_MOVE_TO_A
         self.CMD_MOVE = CMD_MOVE_A
@@ -51,28 +52,28 @@ class StepperBlock(object):
 
     def move_to(self, posA, posB):
         buff = struct.unpack("8B", struct.pack("ii", posA, posB))
-        self.i2c.write(SLAVE, list((self.CMD_MOVE_TO,) + buff))
+        self.i2c.write(self.slave, list((self.CMD_MOVE_TO,) + buff))
 
     def move(self, posA, posB):
         buff = struct.unpack("8B", struct.pack("ii", posA, posB))
-        self.i2c.write(SLAVE, list((self.CMD_MOVE,) + buff))
+        self.i2c.write(self.slave, list((self.CMD_MOVE,) + buff))
 
     def stop(self):
-        self.i2c.write(SLAVE, [self.CMD_STOP, 0])
+        self.i2c.write(self.slave, [self.CMD_STOP, 0])
 
     def remaining(self):
-        ret = self.i2c.readTransaction(SLAVE,self.CMD_REMAINING, 8)
+        ret = self.i2c.readTransaction(self.slave,self.CMD_REMAINING, 8)
         return struct.unpack('ii', array.array('B', ret))
 
     @property
     def pos(self):
-        ret = self.i2c.readTransaction(SLAVE,self.CMD_GET_POS, 8)
+        ret = self.i2c.readTransaction(self.slave,self.CMD_GET_POS, 8)
         return struct.unpack('ii', array.array('B', ret))           
         
     @pos.setter
     def pos(self, pos):
         buff = struct.unpack("8B", struct.pack("ii", pos[0], pos[1]))
-        self.i2c.write(SLAVE, list((self.CMD_SET_POS,) + buff))
+        self.i2c.write(self.slave, list((self.CMD_SET_POS,) + buff))
 
     @property
     def max_speed(self):
@@ -84,7 +85,7 @@ class StepperBlock(object):
         self.motorA._max_speed = speed[0]
         self.motorB._max_speed = speed[1]
         buff = struct.unpack("8B", struct.pack("ff", speed[0], speed[1]))
-        self.i2c.write(SLAVE, list((self.CMD_MAX_SPEED,) + buff))
+        self.i2c.write(self.slave, list((self.CMD_MAX_SPEED,) + buff))
 
     @property
     def acc(self):
@@ -96,16 +97,16 @@ class StepperBlock(object):
         self.motorA._acc = acc[0]
         self.motorB._acc = acc[1]
         buff = struct.unpack("8B", struct.pack("ff", acc[0], acc[1]))
-        self.i2c.write(SLAVE, list((self.CMD_ACC,) + buff))
+        self.i2c.write(self.slave, list((self.CMD_ACC,) + buff))
 
     def enable(self, enable = (1, 1)):
-        self.i2c.write(SLAVE, list((self.CMD_ENABLE,) + enable))
+        self.i2c.write(self.slave, list((self.CMD_ENABLE,) + enable))
 
     def disable(self, enable = (0, 0)):
         self.enable(enable);
 
 class Stepper(object):
-    def __init__(self, i2c,  motor = 'A'):
+    def __init__(self, i2c, motor = 'A'):
         self.motor = motor
         self.i2c = i2c
         
@@ -135,28 +136,28 @@ class Stepper(object):
 
     def move_to(self, pos):
         buff = struct.unpack("4B", struct.pack("i", pos))
-        self.i2c.write(SLAVE, list((self.CMD_MOVE_TO,) + buff))
+        self.i2c.write(self.slave, list((self.CMD_MOVE_TO,) + buff))
 
     def move(self, pos):
         buff = struct.unpack("4B", struct.pack("i", pos))
-        self.i2c.write(SLAVE, list((self.CMD_MOVE,) + buff))
+        self.i2c.write(self.slave, list((self.CMD_MOVE,) + buff))
 
     def stop(self):
-        self.i2c.write(SLAVE, [self.CMD_STOP])
+        self.i2c.write(self.slave, [self.CMD_STOP])
 
     def remaining(self):
-        ret = self.i2c.readTransaction(SLAVE,self.CMD_REMAINING, 4)
-        return struct.unpack('I', array.array('B', ret))[0]
+        ret = self.i2c.readTransaction(self.slave,self.CMD_REMAINING, 4)
+        return struct.unpack('i', array.array('B', ret))[0]
 
     @property
     def pos(self):
-        ret = self.i2c.readTransaction(SLAVE,self.CMD_GET_POS, 4)
-        return struct.unpack('I', array.array('B', ret))[0]           
+        ret = self.i2c.readTransaction(self.slave,self.CMD_GET_POS, 4)
+        return struct.unpack('i', array.array('B', ret))[0]           
         
     @pos.setter
     def pos(self, pos):
         buff = struct.unpack("4B", struct.pack("i", pos))
-        self.i2c.write(SLAVE, list((self.CMD_SET_POS,) + buff))
+        self.i2c.write(self.slave, list((self.CMD_SET_POS,) + buff))
 
     @property
     def max_speed(self):
@@ -167,7 +168,7 @@ class Stepper(object):
     def max_speed(self, speed):
         self._max_speed = speed
         buff = struct.unpack("4B", struct.pack("f", speed))
-        self.i2c.write(SLAVE, list((self.CMD_MAX_SPEED,) + buff))
+        self.i2c.write(self.slave, list((self.CMD_MAX_SPEED,) + buff))
 
     @property
     def acc(self):
@@ -178,10 +179,10 @@ class Stepper(object):
     def acc(self, acc):
         self._acc = acc
         buff = struct.unpack("4B", struct.pack("f", acc))
-        self.i2c.write(SLAVE, list((self.CMD_ACC,) + buff))
+        self.i2c.write(self.slave, list((self.CMD_ACC,) + buff))
 
-    def enable(self):
-        self.i2c.write(SLAVE, [self.CMD_ENABLE, 1])
+    def enable(self, enable = 1):
+        self.i2c.write(self.slave, [self.CMD_ENABLE, enable])
 
     def disable(self):
-        self.i2c.write(SLAVE, [self.CMD_ENABLE, 0])
+        self.enable(0)

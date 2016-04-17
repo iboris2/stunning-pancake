@@ -7,15 +7,23 @@
 
 //#define DEBUG
 
+
+//#define I2C_ADDRESS 12
+#define I2C_ADDRESS 14
+
+
+#define SAMPLETIME 20
+#define DEADBAND 80
+
 #ifdef DEBUG
+  #undef SAMPLETIME
+  #define SAMPLETIME 25
   #define DEBUG_PRINT(x) Serial.print(x)
   #define DEBUG_PRINTLN(x) Serial.println(x)
 #else
   #define DEBUG_PRINT(x)
   #define DEBUG_PRINTLN(x)
 #endif
-
-#define I2C_ADDRESS 8
 
 #define USE_MOTOR_B
 
@@ -27,7 +35,10 @@
 #define A_ENCODER_A 3
 #define A_ENCODER_B 5
 
-double SetpointA, InputA, OutputA = 0.0;
+double SetpointA , InputA, OutputA = 0.0;
+short int lastPwmA = 0;
+short int maxPwmA = 1024;
+
 PID myPIDA(&InputA, &OutputA, &SetpointA,2,5,1, DIRECT);
 
 // motor B
@@ -40,6 +51,9 @@ PID myPIDA(&InputA, &OutputA, &SetpointA,2,5,1, DIRECT);
   #define B_ENCODER_B 4
 
   double SetpointB, InputB, OutputB = 0.0;
+  short int lastPwmB = 0;
+  short int maxPwmB = 1024;
+  
   PID myPIDB(&InputB, &OutputB, &SetpointB,2,5,1, DIRECT);
 #endif
 
@@ -72,22 +86,30 @@ void setup() {
   Wire.onReceive(receiveEvent); // register event
   Wire.onRequest(requestEvent); // register event
 
+#ifdef DEBUG
   Serial.begin(9600);
-  Serial.println("go go");
+#endif
+  DEBUG_PRINT("go go");
   pinMode(13, OUTPUT);
-  myPIDA.SetSampleTime(25);
-  myPIDB.SetSampleTime(25);
+  myPIDA.SetSampleTime(SAMPLETIME);
+  myPIDA.SetTunings(8,0,0.6);
+  myPIDA.SetOutputLimits(-maxPwmA, maxPwmA);
+#ifdef USE_MOTOR_B
+  myPIDB.SetSampleTime(SAMPLETIME);
+  myPIDB.SetTunings(8,0,0.6);
+  myPIDB.SetOutputLimits(-maxPwmB, maxPwmB);
+#endif
 }
 int pos=0;
 unsigned int cnt;
 void loop() {
   InputA = myEncA.read();
   if (myPIDA.Compute())
-    setPwm(OutputA, A_EN_PWM, A_DIR_1, A_DIR_2);
+    setPwmA(OutputA);
   
   InputB = myEncB.read();
   if (myPIDB.Compute())
-    setPwm(OutputB, B_EN_PWM, B_DIR_1, B_DIR_2);
+    setPwmB(OutputB);
     
    handleTask();
 }
@@ -127,8 +149,6 @@ long readLong(uint8_t* buff) {
 }
 
 inline void setPwm(short int pwm, uint8_t pwm_pin, uint8_t dir1_pin, uint8_t dir2_pin) {
-  Serial.print("pwm ");
-  Serial.println(pwm);
   if (pwm >= 0){
     digitalWrite(dir1_pin, LOW);
     digitalWrite(dir2_pin, HIGH);   
@@ -137,7 +157,27 @@ inline void setPwm(short int pwm, uint8_t pwm_pin, uint8_t dir1_pin, uint8_t dir
     digitalWrite(dir2_pin, LOW);
     pwm = -pwm;
   }
+  if (pwm < DEADBAND) pwm = 0; 
   Timer1.setPwmDuty(pwm_pin,pwm);
+}
+
+
+inline void setPwmA(short int pwm) {
+  DEBUG_PRINT("pwmA ");
+  DEBUG_PRINTLN(pwm);
+  noInterrupts();
+  lastPwmA = pwm;
+  interrupts();
+  setPwm(pwm, A_EN_PWM, A_DIR_1, A_DIR_2);
+}
+
+inline void setPwmB(short int pwm) {
+  DEBUG_PRINT("pwmB ");
+  DEBUG_PRINTLN(pwm);
+  noInterrupts();
+  lastPwmB = pwm;
+  interrupts();
+  setPwm(pwm, B_EN_PWM, B_DIR_1, B_DIR_2);
 }
 
 short int readShort() {
@@ -173,7 +213,13 @@ long readLong() {
 #define CMD_GOTO_AB 0x7
 #define CMD_GOTO_B  0x8
 #define CMD_ENABLE_AB 0x9
-#define CMD_ENABLE_B  0x10
+#define CMD_ENABLE_B  0xA
+#define CMD_MAX_PWM_AB 0xB
+#define CMD_MAX_PWM_B  0xC
+#define CMD_INVERT_AB 0xD
+#define CMD_INVERT_B  0xE
+
+
 
 
 char reg = 0x0;
@@ -189,7 +235,7 @@ void receiveEvent(int howMany) {
   /* force encoder update to prevent loosing step */
   if (!howMany) return;
   reg = Wire.read();
-  if (reg > CMD_ENABLE_B) return; /* read register */
+  if (reg > CMD_INVERT_B) return; /* read register */
   Task* t = c_buff.push();
   if (howMany <= 15)
     t->len = howMany;
@@ -212,7 +258,9 @@ void handleTask() {
   switch(cmd){
   case CMD_PWM_AB:
     if (t.len < 3) break;
-    setPwm(readShort(buff_ptr), A_EN_PWM, A_DIR_1, A_DIR_2);
+    DEBUG_PRINT("pwmA ");
+    DEBUG_PRINTLN(readShort(buff_ptr));
+    setPwmA(readShort(buff_ptr));
     buff_ptr += 2;
     t.len -= 2;
     // no beak;
@@ -220,12 +268,16 @@ void handleTask() {
 #ifdef USE_MOTOR_B
   case CMD_PWM_B:
     if (t.len < 3) break;
-    setPwm(readShort(buff_ptr), B_EN_PWM, B_DIR_1, B_DIR_2);
+    DEBUG_PRINT("pwmB ");
+    DEBUG_PRINTLN(readShort(buff_ptr));
+    setPwmB(readShort(buff_ptr));
 #endif
     break;
 
   case CMD_RST_AB:
     if (t.len < 5) break;
+    DEBUG_PRINT("posA ");
+    DEBUG_PRINTLN(readLong(buff_ptr));
     myEncA.write(readLong(buff_ptr));
     buff_ptr += 4;
     t.len -= 4;
@@ -234,16 +286,24 @@ void handleTask() {
 #ifdef USE_MOTOR_B
   case CMD_RST_B:
     if (t.len < 5) break;
+    DEBUG_PRINT("posB ");
+    DEBUG_PRINTLN(readLong(buff_ptr));
     myEncB.write(readLong(buff_ptr));
 #endif
     break;
 
   case CMD_PID_AB:
     if (t.len < 13) break;
+    DEBUG_PRINT("pidA ");
+    DEBUG_PRINT(readFloat(buff_ptr));
     kp = readFloat(buff_ptr);
     buff_ptr += 4;
+    DEBUG_PRINT(" ");
+    DEBUG_PRINT(readFloat(buff_ptr));
     ki = readFloat(buff_ptr);
     buff_ptr += 4;
+    DEBUG_PRINT(" ");
+    DEBUG_PRINTLN(readFloat(buff_ptr));
     kd = readFloat(buff_ptr);
     myPIDA.SetTunings(kp ,ki, kd);
     break;
@@ -251,10 +311,16 @@ void handleTask() {
 #ifdef USE_MOTOR_B
   case CMD_PID_B:
     if (t.len < 13) break;
+    DEBUG_PRINT("pidB ");
+    DEBUG_PRINT(readFloat(buff_ptr));
     kp = readFloat(buff_ptr);
     buff_ptr += 4;
+    DEBUG_PRINT(" ");
+    DEBUG_PRINT(readFloat(buff_ptr));
     ki = readFloat(buff_ptr);
     buff_ptr += 4;
+    DEBUG_PRINT(" ");
+    DEBUG_PRINTLN(readFloat(buff_ptr));
     kd = readFloat(buff_ptr);
     myPIDB.SetTunings(kp ,ki, kd);
 #endif
@@ -262,6 +328,8 @@ void handleTask() {
 
   case CMD_GOTO_AB:
     if (t.len < 5) break;
+    DEBUG_PRINT("targetA ");
+    DEBUG_PRINTLN(readLong(buff_ptr));
     SetpointA = readLong(buff_ptr);
     myPIDA.SetMode(AUTOMATIC);
     buff_ptr += 4;
@@ -271,17 +339,24 @@ void handleTask() {
 #ifdef USE_MOTOR_B
   case CMD_GOTO_B:
     if (t.len < 5) break;
+    DEBUG_PRINT("targetB ");
+    DEBUG_PRINTLN(readLong(buff_ptr));
     SetpointB = readLong(buff_ptr);
     myPIDB.SetMode(AUTOMATIC);
 #endif
     break;
 
-    case CMD_ENABLE_AB:
+  case CMD_ENABLE_AB:
     if (t.len < 2) break;
-    if (*buff_ptr)
+    if (*buff_ptr){
+      DEBUG_PRINTLN("enA ");
       myPIDA.SetMode(AUTOMATIC);
-    else
+    }
+    else {
+      DEBUG_PRINTLN("disA ");
       myPIDA.SetMode(MANUAL);
+      setPwmA(0);
+    }
     buff_ptr += 1;
     t.len -= 1;
     // no beak;
@@ -289,10 +364,67 @@ void handleTask() {
 #ifdef USE_MOTOR_B
   case CMD_ENABLE_B:
     if (t.len < 2) break;
-    if (*buff_ptr)
+    if (*buff_ptr){
+      DEBUG_PRINTLN("enB ");
       myPIDB.SetMode(AUTOMATIC);
-    else
+    }
+    else {
+      DEBUG_PRINTLN("disB ");
       myPIDB.SetMode(MANUAL);
+      setPwmB(0);
+    }
+#endif
+    break;
+    
+  case CMD_MAX_PWM_AB:
+    if (t.len < 3) break;
+    DEBUG_PRINT("maxA ");
+    DEBUG_PRINTLN(readShort(buff_ptr));
+    maxPwmA = readShort(buff_ptr);
+    if (maxPwmA <= 0)
+      maxPwmA = 0;
+    myPIDA.SetOutputLimits(-maxPwmA, maxPwmA);
+    buff_ptr += 2;
+    t.len -= 2;
+    // no beak;
+
+#ifdef USE_MOTOR_B
+  case CMD_MAX_PWM_B:
+    if (t.len < 3) break;
+    DEBUG_PRINT("maxB ");
+    DEBUG_PRINTLN(readShort(buff_ptr));
+    maxPwmB = readShort(buff_ptr);
+    if (maxPwmB <= 0)
+      maxPwmB = 0;
+    myPIDB.SetOutputLimits(-maxPwmB, maxPwmB);
+#endif
+    break;
+
+  case CMD_INVERT_AB:
+    if (t.len < 2) break;
+    if (*buff_ptr){
+      DEBUG_PRINTLN("directA ");
+      myPIDA.SetControllerDirection(REVERSE);
+    }
+    else {
+      DEBUG_PRINTLN("revA ");
+      myPIDA.SetControllerDirection(DIRECT);
+    }
+    buff_ptr += 1;
+    t.len -= 1;
+    // no beak;
+
+#ifdef USE_MOTOR_B
+  case CMD_INVERT_B:
+    if (t.len < 2) break;
+    if (*buff_ptr){
+      DEBUG_PRINTLN("directB ");
+      myPIDB.SetControllerDirection(REVERSE);
+    }
+    else {
+      DEBUG_PRINTLN("revB ");
+      myPIDB.SetControllerDirection(DIRECT);
+    }
 #endif
     break;
     
@@ -301,12 +433,39 @@ void handleTask() {
   }
 }
 
+/* read request */
+#define CMD_GET_POS_A     0x21
+#define CMD_GET_POS_B     0x22
+#define CMD_GET_PWM_A 0x23
+#define CMD_GET_PWM_B 0x24
+
 void requestEvent() {
+  long value;
   toogle();
-  long valueA = myEncA.encoder.position;
-  Wire.write((uint8_t *)(&valueA), 4);
+  switch (reg){
+  case CMD_GET_POS_A:
+    value = myEncA.encoder.position;
+    Wire.write((uint8_t *)(&value), 4);
+    break;
+
+  case CMD_GET_POS_B:
 #ifdef USE_MOTOR_B
-  long valueB = myEncB.encoder.position;
-  Wire.write((uint8_t *)(&valueB), 4);
+    value = myEncB.encoder.position;
+    Wire.write((uint8_t *)(&value), 4);
 #endif
+  break;
+
+  case CMD_GET_PWM_A:
+    Wire.write((uint8_t *)(&lastPwmA), 2);
+    break;
+
+  case CMD_GET_PWM_B:
+#ifdef USE_MOTOR_B
+    Wire.write((uint8_t *)(&lastPwmB), 2);
+#endif
+  break;
+
+  default:
+  break;
+  }
 }

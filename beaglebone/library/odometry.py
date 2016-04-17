@@ -18,6 +18,7 @@ class Odometry(object):
         self.X = 0.0
         self.Y = 0.0
         self.A = 0.0
+        self.A_offset = 0.0
         self.tick_to_mm = tick_to_mm
         self.dist_to_mm = tick_to_mm / 2.0
         self.teta_to_radian = tick_to_mm / rayon
@@ -26,6 +27,8 @@ class Odometry(object):
         self.lock = threading.Lock()
         self.myThread = None
         self.run  = True
+        
+        d,g, self.A = self.get_encoder() #flust 1st value
     
     def start(self):  
         if self.myThread != None:
@@ -51,7 +54,7 @@ class Odometry(object):
     @property
     def angle(self):
         self.lock.acquire()
-        angle = self.A
+        angle = self.A + self.A_offset
         self.lock.release()
         return angle
         
@@ -66,11 +69,8 @@ class Odometry(object):
         d = int(enc[0])
         g = int(enc[1])
         angle = (d - g) * self.teta_to_radian
-        
-        if self.previous == None:
-            ret = 0, 0, angle
-        else:
-            ret = d - self.previous[0], g - self.previous[1], angle
+
+        ret = d - self.previous[0], g - self.previous[1], angle
         self.previous = (d, g)
         return ret
     
