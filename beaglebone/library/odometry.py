@@ -24,7 +24,7 @@ class Odometry(object):
         self.teta_to_radian = tick_to_mm / rayon
         self.previous = None
         
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.myThread = None
         self.run  = True
         

@@ -17,7 +17,7 @@ class RampProfile(object):
         self.speed = 0.0
         self.d_stop = 0.0
         
-    def nextold(self):
+    def next(self):
         if self.pos == self.target:
             return None
         remaining = abs(self.target - self.pos)
@@ -38,7 +38,7 @@ class RampProfile(object):
 
         return self.pos
     
-    def next(self):
+    def nextold(self):
         if self.pos == self.target:
             return None
         remaining = abs(self.target - self.pos)

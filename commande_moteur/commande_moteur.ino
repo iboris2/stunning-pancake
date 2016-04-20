@@ -8,12 +8,13 @@
 //#define DEBUG
 
 
-//#define I2C_ADDRESS 12
-#define I2C_ADDRESS 14
+#define I2C_ADDRESS 12
+//#define I2C_ADDRESS 14
 
 
 #define SAMPLETIME 20
 #define DEADBAND 80
+#define BRIDE_PWM 256
 
 #ifdef DEBUG
   #undef SAMPLETIME
@@ -100,6 +101,30 @@ void setup() {
   myPIDB.SetOutputLimits(-maxPwmB, maxPwmB);
 #endif
 }
+
+char bridePwm = 0;
+
+void pwmWatchdog(char reset = 0){
+  static unsigned long lastTime = 0;
+  char newbridePwm;
+  if (reset) {
+    lastTime = micros();
+  }
+  unsigned long time = micros();
+  if ((time - lastTime) > 1000000){
+    newbridePwm = 1;
+    if ((time - lastTime) > 90000000)
+      newbridePwm = 2;
+    if (bridePwm != newbridePwm){
+      bridePwm = newbridePwm;
+      setPwmA(lastPwmA);
+      setPwmB(lastPwmB);
+    }
+  } else {
+    bridePwm = 0;
+  }
+}
+
 int pos=0;
 unsigned int cnt;
 void loop() {
@@ -112,7 +137,10 @@ void loop() {
     setPwmB(OutputB);
     
    handleTask();
+   pwmWatchdog();
 }
+
+
 
 float readFloat(uint8_t* buff) {
   union u_float {
@@ -157,7 +185,13 @@ inline void setPwm(short int pwm, uint8_t pwm_pin, uint8_t dir1_pin, uint8_t dir
     digitalWrite(dir2_pin, LOW);
     pwm = -pwm;
   }
-  if (pwm < DEADBAND) pwm = 0; 
+  if (pwm < DEADBAND) pwm = 0;
+  if (bridePwm){
+    if (pwm > BRIDE_PWM)
+      pwm = BRIDE_PWM;
+      if (bridePwm == 2)
+        pwm = 0;
+  }
   Timer1.setPwmDuty(pwm_pin,pwm);
 }
 
@@ -247,9 +281,11 @@ void receiveEvent(int howMany) {
   }
 }
 
-void handleTask() {
+char handleTask() {
   float kp, ki, kd;
-  if (c_buff.remain() <= 0) return;
+  long value, input;
+  if (c_buff.remain() <= 0) return 0;
+  pwmWatchdog(1);
   Task t = c_buff.pop();
   uint8_t* buff_ptr = t.buffer;
   DEBUG_PRINT("handle task ");
@@ -278,7 +314,9 @@ void handleTask() {
     if (t.len < 5) break;
     DEBUG_PRINT("posA ");
     DEBUG_PRINTLN(readLong(buff_ptr));
-    myEncA.write(readLong(buff_ptr));
+    value = readLong(buff_ptr);
+    myEncA.write(value);
+    SetpointA = value;
     buff_ptr += 4;
     t.len -= 4;
     // no beak;
@@ -288,7 +326,10 @@ void handleTask() {
     if (t.len < 5) break;
     DEBUG_PRINT("posB ");
     DEBUG_PRINTLN(readLong(buff_ptr));
-    myEncB.write(readLong(buff_ptr));
+    value = readLong(buff_ptr);
+    myEncB.write(value);
+    SetpointB = value; 
+    
 #endif
     break;
 
@@ -431,6 +472,7 @@ void handleTask() {
   default:
     break;
   }
+  return 1;
 }
 
 /* read request */
