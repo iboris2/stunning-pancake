@@ -39,30 +39,25 @@ class Odometry(object):
     
     @property
     def position(self):
-        self.lock.acquire()
-        pos = self.X, self.Y
-        self.lock.release()
-        return pos
+        with self.lock:
+            return self.X, self.Y
         
     @position.setter
     def position(self, pos):
-        self.lock.acquire()
-        self.X = pos[0]
-        self.Y = pos[1]
-        self.lock.release()
+        with self.lock:
+            self.X = pos[0]
+            self.Y = pos[1]
 
     @property
     def angle(self):
-        self.lock.acquire()
-        angle = self.A + self.A_offset
-        self.lock.release()
-        return angle
+        with self.lock:
+            return self.A + self.A_offset
+
         
     @angle.setter
     def angle(self, angle):
-        self.lock.acquire()
-        self.A = angle
-        self.lock.release()
+        with self.lock:
+            self.A = angle
 
     def get_encoder(self):
         enc = sysfs.kernelFileIO(self.encoder_file).split()
@@ -81,11 +76,10 @@ class Odometry(object):
         X = self.X + d_dist * math.cos(self.angle)
         Y = self.Y + d_dist * math.sin(self.angle)
         
-        self.lock.acquire()
-        self.X = X
-        self.Y = Y
-        self.A = angle
-        self.lock.release()
+        with self.lock:
+            self.X = X
+            self.Y = Y
+            self.A = angle
     
     def test(self,nb):
         a = 0.0
