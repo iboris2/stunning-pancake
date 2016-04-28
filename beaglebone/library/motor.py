@@ -22,6 +22,9 @@ CMD_SET_POS_A =     0xB
 CMD_SET_POS_B =     0xC
 CMD_ENABLE_A =      0xD
 CMD_ENABLE_B =      0xE
+CMD_UPDATE_MOVE_A = 0xF
+CMD_UPDATE_MOVE_B = 0x10
+
 
 CMD_REMAINING_A =   0x21
 CMD_REMAINING_B =   0x22
@@ -47,6 +50,8 @@ class StepperBlock(object):
         self.CMD_ACC = CMD_ACC_A
         self.CMD_SET_POS = CMD_SET_POS_A
         self.CMD_ENABLE = CMD_ENABLE_A
+        self.CMD_UPDATE_MOVE = CMD_UPDATE_MOVE_A
+        
         self.CMD_GET_POS = CMD_GET_POS_A
         self.CMD_REMAINING = CMD_REMAINING_A
 
@@ -57,6 +62,10 @@ class StepperBlock(object):
     def move(self, posA, posB):
         buff = struct.unpack("8B", struct.pack("ii", posA, posB))
         self.i2c.write(self.slave, list((self.CMD_MOVE,) + buff))
+        
+    def update_move(self, posA, posB):
+        buff = struct.unpack("8B", struct.pack("ii", posA, posB))
+        self.i2c.write(self.slave, list((self.CMD_UPDATE_MOVE,) + buff))
 
     def stop(self):
         self.i2c.write(self.slave, [self.CMD_STOP, 0])
@@ -121,6 +130,7 @@ class Stepper(object):
             self.CMD_ACC = CMD_ACC_A
             self.CMD_SET_POS = CMD_SET_POS_A
             self.CMD_ENABLE = CMD_ENABLE_A
+            self.CMD_UPDATE_MOVE = CMD_UPDATE_MOVE_A
             self.CMD_REMAINING = CMD_REMAINING_A
             self.CMD_GET_POS = CMD_GET_POS_A
         else:
@@ -131,6 +141,7 @@ class Stepper(object):
             self.CMD_ACC = CMD_ACC_B
             self.CMD_SET_POS = CMD_SET_POS_B
             self.CMD_ENABLE = CMD_ENABLE_B
+            self.CMD_UPDATE_MOVE = CMD_UPDATE_MOVE_B
             self.CMD_REMAINING = CMD_REMAINING_B
             self.CMD_GET_POS = CMD_GET_POS_B        
 
@@ -142,6 +153,10 @@ class Stepper(object):
         buff = struct.unpack("4B", struct.pack("i", pos))
         self.i2c.write(self.slave, list((self.CMD_MOVE,) + buff))
 
+    def update_move(self, pos):
+        buff = struct.unpack("4B", struct.pack("i", pos))
+        self.i2c.write(self.slave, list((self.CMD_UPDATE_MOVE,) + buff))
+        
     def stop(self):
         self.i2c.write(self.slave, [self.CMD_STOP])
 

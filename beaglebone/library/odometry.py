@@ -28,7 +28,8 @@ class Odometry(object):
         self.myThread = None
         self.run  = True
         
-        d,g, self.A = self.get_encoder() #flust 1st value
+        d,g, self.A = self._get_encoder() #flust 1st value
+        self.start()
     
     def start(self):  
         if self.myThread != None:
@@ -36,6 +37,11 @@ class Odometry(object):
         self.myThread = threading.Thread(target=self.odo_thread)
         self.myThread.setDaemon(True)
         self.myThread.start()
+
+    @property
+    def encoder(self):
+        with self.lock:
+            return self.previous[0] * self.tick_to_mm, self.previous[1] * self.tick_to_mm
     
     @property
     def position(self):
@@ -59,18 +65,19 @@ class Odometry(object):
         with self.lock:
             self.A = angle
 
-    def get_encoder(self):
+    def _get_encoder(self):
         enc = sysfs.kernelFileIO(self.encoder_file).split()
         d = int(enc[0])
         g = int(enc[1])
         angle = (d - g) * self.teta_to_radian
 
         ret = d - self.previous[0], g - self.previous[1], angle
-        self.previous = (d, g)
+        with self.lock:
+            self.previous = (d, g)
         return ret
     
     def do_odo(self):
-        dr, dl, angle = self.get_encoder()
+        dr, dl, angle = self._get_encoder()
         d_dist = (dr + dl) * self.dist_to_mm
         
         X = self.X + d_dist * math.cos(self.angle)

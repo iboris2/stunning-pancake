@@ -3,14 +3,69 @@
 """
 import math
 import time
+import odometry
+import evitement
+from evitement import Obstacle
+from ibus.modifier import FORWARD_MASK
 
+class Event(object):
+    PRECISION = 0
+    TIMEOUT = 1
+    BLOCKAGE = 2
+    OBSTACLE = 3
+    def __init__(self, _type, value = 0):
+        self.type = _type
+        self.value = value
+
+class Blockage(object):
+    NONE = 0
+    RIGHT = 1
+    LEFT = 2
+    BOTH = 3
+    ANY = 4
+    def __init__(self, odo):
+        self.odo = odometry.Odometry(1, 1)
+        self.reset(9999999,9999999)
+        self.threshold = 20 # check every 20mm
+        self.max_ratio = 0.5 # 10mm error / 20 mm
+    
+    def reset(self, rD, rG):
+        self.rD = rD
+        self.rG = rG
+        self.odoD, self.odoG = self.odo.encoder  
+    
+    def detect(self, rD, rG):
+        ret = Blockage.NONE
+        odoD, odoG = self.odo.encoder
+        delta_rD = rD - self.rD
+        delta_rG = rG - self.rG
+        
+        if delta_rD >= self.threshold:
+            delta_odoD = odoD - self.odoD
+            print "delta D", delta_rD, delta_odoD
+            if delta_odoD / delta_rD < self.max_ratio:
+                ret = ret | Blockage.RIGHT
+            self.rD = rD
+            self.odoD = odoD
+        
+        if delta_rG >= self.threshold:
+            delta_odoG = odoG - self.odoG
+            print "delta G", delta_rG, delta_odoG
+            if delta_odoG / delta_rG < self.max_ratio:
+                ret = ret | Blockage.LEFT
+            self.rG = rG
+            self.odoG = odoG
+        
+        return ret
+        
 class MotorConfig:
     def __init__(self, navigation, acc=None, vmax=None):
-        self.acc = acc
-        self.acc_bkp = navigation.acc
-        self.vmax = vmax
-        self.vmax_bkp = navigation.max_speed
         self.navigation = navigation
+        self.acc = acc
+        self.vmax = vmax
+        
+        self.acc_bkp = navigation.acc
+        self.vmax_bkp = navigation.max_speed
         
     def __enter__(self):
         if self.acc is not None:
@@ -24,15 +79,62 @@ class MotorConfig:
         if self.vmax is not None:
             self.navigation.max_speed = self.vmax_bkp
 
+class ObstacleConfig:
+    def __init__(self, navigation, precision=None, blockage=None, obs_detection=None):
+        self.navigation = navigation
+        self.precision = precision
+        self.blockage = blockage
+        self.obs_detection = obs_detection
+        
+        self.precision_bkp = navigation.precision
+        self.blockage_bkp = navigation.blockage
+        self.obs_detection_bkp = navigation.obs_detection
+
+    def __enter__(self):
+        if self.precision is not None:
+            self.navigation.precision = self.precision
+        if self.blockage is not None:
+            self.navigation.blockage = self.blockage
+        if self.obs_detection is not None:
+                self.navigation.obs_detection = self.obs_detection
+
+    def __exit__(self, type, value, traceback):
+        if self.precision is not None:
+            self.navigation.precision = self.precision_bkp
+        if self.blockage is not None:
+            self.navigation.blockage = self.blockage_bkp
+        if self.obs_detection is not None:
+            self.navigation.obs_detection = self.obs_detection_bkp
+
 class Navigation(object):
-    def __init__(self, motors):
+    def __init__(self, motors, _evitement):
         #136mm * PI = 1600 step
         self.mm_to_step = 1600 / (math.pi * 136)
         self.step_to_mm = 1.0/self.mm_to_step
         self.motors = motors
         
         self.D = 305.0
-        self.d = self.D/2.0
+        self.rayon = self.D/2.0
+        
+        self.encoder_tick_to_mm = 12.73
+        self.rayon_encoder = 280.0 / 2.0
+        
+        self.odo = odometry.Odometry(self.encoder_tick_to_mm, self.rayon_encoder)
+        self.odo.position = (0,0)
+        self.odo.angle = 0
+        
+        self.approach_speed = 90
+        
+        self.evitement = _evitement
+        self.evitement = evitement.Obstacle()
+        
+        self.blockage_detection = Blockage(self.odo)
+        
+        #wait event params
+        self.precision = 1
+        self.blockage = Blockage.ANY
+        self.obs_detection = Obstacle.NONE
+        
     
     @property
     def max_speed(self):
@@ -64,10 +166,36 @@ class Navigation(object):
     def move(self, mm):
         dist = mm * self.mm_to_step
         self.motors.move(dist, dist)
+        self.waitForEvent()
+
+    def update_move(self, mm):
+        dist = mm * self.mm_to_step
+        self.motors.update_move(dist, dist)
+        self.waitForEvent()
+    
+    def move_contact(self, distA, distB, approach_speed=None, speed=None):
+        if speed == None:
+            speed = self.max_speed
+            speed = (speed[0] + speed[1]) / 2.0
+        acc = (self.acc[0] + self.acc[1]) / 2.0 
+        if approach_speed == None:
+            approach_speed = self.approach_speed
+        
+        precision = (speed*speed)/ (2.0 * acc)
+        
+        with MotorConfig(self,vmax=speed):
+            with ObstacleConfig(self, precision=precision, blockage=Blockage.ANY, obs_detection=Obstacle.NONE):
+                ret = self.move(distA)
+                if ret.type == Event.BLOCKAGE:
+                    return ret
+        with MotorConfig(self,vmax=speed):
+            with ObstacleConfig(self, precision=1, blockage=Blockage.ANY, obs_detection=Obstacle.NONE):
+                ret = self.move(distB)
+                return ret       
 
     def turn(self, angle, rayon=0):
-        mA = angle * (rayon + self.d)
-        mB = angle * (rayon - self.d)
+        mA = angle * (rayon + self.rayon)
+        mB = angle * (rayon - self.rayon)
         # compute speed and acc
         vmaxA, vmaxB = self.max_speed
         accA, accB = self.acc
@@ -84,15 +212,170 @@ class Navigation(object):
         
         with MotorConfig(self, (accA, accB), (vmaxA, vmaxB)):
             self.motors.move(mA * self.mm_to_step , mB * self.mm_to_step)
-            self.wait()
+            self.waitForEvent()
     
-    def wait(self):
-        time.sleep(0.3)
-        while True:
-            rA, rB = self.motors.remaining()
-            rA = abs(rA)
-            rB = abs(rB)
-            print rA, rB
-            if rA <=1 and rB <= 1:
-                break
-            time.sleep(0.2)
+    def stop(self, emergency=False):
+        if emergency == True:
+            with MotorConfig(self, (3000,3000)):
+                self.motors.stop()
+                self.waitForEvent(precision=2)
+        else:
+            self.motors.stop()
+            self.waitForEvent(precision=2)
+            
+    def waitForEvent(self, timeout=15, precision=None, blockage=None, obs_detection=None):
+        start = time.time()
+        time.sleep(0.10)
+        
+        if precision == None:
+            precision = self.precision
+        if blockage == None:
+            blockage = self.blockage
+        rD, rG = self.motors.remaining() # check if not sending previou move remqining
+        rD = abs(rD * self.step_to_mm)
+        rG = abs(rG * self.step_to_mm)
+        self.blockage_detection.reset(rD, rG)
+        
+        if obs_detection == None:
+            obs_detection = self.obs_detection
+
+        while True :
+            rD, rG = self.motors.remaining() # check if not sending previou move remqining
+            rD = abs(rD * self.step_to_mm)
+            rG = abs(rG * self.step_to_mm)
+            print rD, rG
+            if rD <= precision and rG <= precision:
+                return Event(Event.PRECISION)
+            
+            if blockage:
+                ret = self.blockage_detection.detect(rD, rG)
+                if blockage <= Blockage.BOTH:
+                    if ret & blockage == blockage: #if RIGHT or LEFT or RIGHTandLEFT
+                        return Event(Event.BLOCKAGE, ret)
+                elif ret:
+                    return Event(Event.BLOCKAGE, ret)
+            
+            #self.checkEndOfGame()
+            if obs_detection:
+                ret = self.evitement.obstacleDetected(obs_detection)
+                if ret is not Obstacle.NONE:
+                    return Event(Event.OBSTACLE, ret)
+
+            if(timeout > 0 and start + timeout < time.time() ):
+                print ("!!! Timeout")
+                return Event(Event.TIMEOUT)
+            
+            #todo blockage
+            time.sleep(0.02);
+    
+    @property
+    def position(self):
+        return self.odo.position
+        
+    @position.setter
+    def position(self, pos):
+        self.odo.position = pos
+        
+    @property
+    def angle(self):
+        return self.odo.angle
+        
+    @angle.setter
+    def angle(self, angle):
+        self.odo.angle = angle
+    
+    def eventReaction(self, event, prev_action):
+        angle = math.pi / 8
+        dist = 50
+        rayon = self.rayon
+        if event.type == Event.BLOCKAGE:
+            if prev_action == EventReaction.TURN_RIGHT or prev_action == EventReaction.TURN_LEFT:
+                if event.value & Blockage.RIGHT:
+                    if prev_action == EventReaction.TURN_LEFT:
+                        angle = -angle
+                        dist = -dist
+                        #self.turn(-angle, self.rayon)
+                    #else:
+                        #angle = angle
+                        #dist = dist
+                        #self.turn(angle, self. rayon)
+                else: #event.value == Blockage.LEFT:
+                    rayon = -rayon
+                    if prev_action == EventReaction.TURN_RIGHT:
+                        #angle = angle
+                        dist = -dist
+                    else:
+                        angle = -angle
+                        #dist = dist
+            if prev_action == EventReaction.MOVING_FORWARD:
+                dist = - dist
+                if event.value & Blockage.RIGHT:
+                    angle = -angle
+                    rayon = -rayon
+                #else: event.value == Blockage.LEFT:
+            if prev_action == EventReaction.MOVING_BACKWARD:
+                if event.value & Blockage.RIGHT:
+                    rayon = -rayon
+                else:
+                    angle = -angle
+            with MotorConfig(self, (300,300), (300,300)):   
+                self.turn(angle, self. rayon)
+                self.waitForEvent(self, timeout=2, precision=1, blockage=Blockage.NONE, obs_detection=Obstacle.NONE)
+                self.move(dist)
+                self.waitForEvent(self, timeout=2, precision=1, blockage=Blockage.NONE, obs_detection=Obstacle.NONE)
+
+        if event.type == Event.OBSTACLE:         
+            if event.value & Obstacle.RIGHT:
+                angle = -angle
+                dist = -dist
+            if event.value & Obstacle.LEFT:
+                pass
+            if event.value & Obstacle.BACK:
+                pass
+            with MotorConfig(self, (300,300), (300,300)):
+                self.turn(angle, self. rayon)
+                self.waitForEvent(self, timeout=2, precision=1, blockage=Blockage.NONE, obs_detection=Obstacle.NONE)
+                self.move(dist)
+                self.waitForEvent(self, timeout=2, precision=1, blockage=Blockage.NONE, obs_detection=Obstacle.NONE)
+ 
+            
+    
+    def goto(self, pos, rotate_only = False):
+        x , y = self.position
+        angle = self.angle
+        new_angle = math.atan2(pos[0] - y, pos[1] - x)
+        new_angle = ClosestEquivalentAngle(angle, new_angle)
+        diff_angle = new_angle - angle
+        
+        ev = self.turn(diff_angle)
+        if (diff_angle > 0.0):
+            self.eventReaction(ev, EventReaction.TURN_LEFT)
+        else:
+            self.eventReaction(ev, EventReaction.TURN_RIGHT)    
+        
+        x , y = self.position
+        dist = math.sqrt(   (pos[0] - y)**2 + (pos[1] - x)**2)
+        ev = self.move(dist)
+        if (dist > 0.0):
+            self.eventReaction(ev, EventReaction.MOVING_FORWARD)
+        else:
+            self.eventReaction(ev, EventReaction.MOVING_BACKWARD)  
+ 
+class EventReaction():
+    TURN_RIGHT = 1
+    TURN_LEFT = 2
+    MOVING_FORWARD = 3
+    MOVING_BACKWARD = 4
+    def __init__(self):
+        pass      
+
+def ClosestEquivalentAngle(old_angle, new_angle):
+    if new_angle<=old_angle :
+        while (not (old_angle-math.pi<=new_angle and new_angle<old_angle+math.pi)):
+            new_angle+=2*math.pi
+        return new_angle
+    else:
+        while (not (old_angle-math.pi<=new_angle and new_angle<old_angle+math.pi)):
+            new_angle-=2*math.pi
+        return new_angle;
+        

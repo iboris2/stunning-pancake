@@ -148,7 +148,7 @@ class Pid(object):
         self.i2c.write(self.slave, [self.parent.CMD_ENABLE, enable])
 
     def disable(self):
-        self.enable(0)  
+        self.enable(0)
 
 class Motor(object):
     def __init__(self, i2c, slave,  motor = 'A', mm_to_tick = 200.0, reverse = 0):
@@ -547,8 +547,3 @@ class Gobgob(asyncjob.AsyncJob):
         
 def do_print(x):
     print x
-        
-        
-    
-        
-        
