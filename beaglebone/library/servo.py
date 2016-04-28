@@ -1,4 +1,5 @@
 import math, time
+from rampprofile import RampProfile
 
 PCA9685_MODE1 = 0x0
 PCA9685_PRESCALE = 0xFE
@@ -61,7 +62,7 @@ class Servo(object):
         self.slave = 0x40
         self.servo_num = servo_num
 
-        self.configure(-90, 90, pw_min, pw_max )
+        self.configure( )
 
         self.low_addr = SERVO_L + (servo_num * SERVO_MULTIPLIER)
         self.high_addr = SERVO_H + (servo_num * SERVO_MULTIPLIER)
@@ -76,7 +77,9 @@ class Servo(object):
         self.i2c.write(self.slave, [self.low_addr, pwm & 0xff])
         self.i2c.write(self.slave, [self.high_addr, pwm >> 8])
     
-    def configure(self, angle_min, angle_max, pw_min=300, pw_max=600):
+    def configure(self, speed=85.0, acc=12.0, angle_min = -90, angle_max = 90, pw_min=300, pw_max=600):
+        self.speed = speed
+        self.acc = acc
         self.angle_min = angle_min
         self.angle_max = angle_max
         self.pw_min = pw_min
@@ -84,13 +87,34 @@ class Servo(object):
     
     @property
     def angle(self):
-        return 0
+        low = self.i2c.readTransaction(self.slave, self.low_addr, 1)[0]
+        high = self.i2c.readTransaction(self.slave, self.high_addr, 1)[0]
+        pw = low + (high * 256)
+        val = float(pw - self.pw_min) / float(self.pw_max - self.pw_min)
+        return val * (self.angle_max - self.angle_min) + self.angle_min
     
     @angle.setter
     def angle(self, angle):
         val = float(angle - self.angle_min) / float(self.angle_max - self.angle_min)
         self.set_pwm(int(val * (self.pw_max - self.pw_min) + self.pw_min))
     
+    def move(self, angle, speed = None, acc = None):
+        dt = 0.05
+        if speed == None:
+            speed = self.speed
+        if acc == None:
+            acc = self.acc
+        speed = speed * dt
+        acc = acc * dt
+        ramp = RampProfile(self.angle, angle, speed, acc)
+        while True:
+            pos = ramp.next()
+            if not pos:
+                break
+            self.angle = pos
+            print pos
+            time.sleep(dt)
+
     def disable(self):
         self.i2c.write(self.slave, [self.low_addr, 0])
         self.i2c.write(self.slave, [self.high_addr, 0])
