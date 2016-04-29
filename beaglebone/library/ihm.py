@@ -135,12 +135,19 @@ class Display(TM1637):
         else:
             seg = Display.G
         self.set_segments([seg, 0])
-            
+
+    def starter(self,value):
+        if value == 1:
+            self.set_segments([0b1000],2)
+        elif value == 2:
+            self.set_segments([0b1001000],2)
+        else:
+            self.set_segments([0],2)
     def strategy(self, value):
         if value is None:
-            self.set_segments([0, 0],2)
+            self.set_segments([0],3)
         else:    
-            self.set_segments([0, self.digit_to_segment[value]],2)
+            self.set_segments([self.digit_to_segment[value]],3)
 
 class Button():
     def __init__(self, gpio, pullup=None):
@@ -172,6 +179,7 @@ class Ihm(object):
     SELECT_STRATEGY = 2
     blink_delay = 1.0
     def __init__(self):
+        self.prepare_lvl = 0
         self.display = Display(GPIO2_2, GPIO2_3)
         self.button  = Button(GPIO2_5,1)
         self.starter = Button(GPIO0_30)
@@ -185,6 +193,10 @@ class Ihm(object):
     
     def do_events(self):
         t = time.time()
+        if self.starter.value:
+            self.display.starter(1)
+        else:
+            self.display.starter(0)
         if self.mode == Ihm.IDLE:
             if self.button.event() is not None:
                 self.mode = Ihm.SELECT_COLOR
@@ -216,9 +228,31 @@ class Ihm(object):
                 time.sleep(0.1)
                 self.strategy = (self.strategy + 1) % 5
                 self.display.strategy(self.strategy)
-            return  
-        
-        
-        
+            return
+
+    def prepare(self):
+        #flush events
+        self.button.event()
+        while True:
+            self.do_events()
+            if self.starter.event() == LOW:
+                self.display.color(self.color)
+                self.display.strategy(self.strategy)
+                self.prepare_lvl = 1
+                return self.color, self.strategy
+            time.sleep(0.1)
+
+    def wait_starter(self):
+        while True:
+            if self.starter.value:
+                self.display.starter(2)
+            else:
+                self.display.starter(0)
+            if self.starter.event() == LOW:
+                return True
+            if self.button.event():
+                return False
+
+
         
 
