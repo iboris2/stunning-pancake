@@ -32,11 +32,11 @@ class Obstacle(object):
     BACK = 4
     BOTH = FRONT | BACK
     def __init__(self, i2c):
-        self.ir_right = IrSensor(i2c, 14, 'A')
-        self.ir_left = IrSensor(i2c, 12, 'A')
-        self.ir_back = IrSensor(i2c, 12, 'B')
+        self.ir_right = IrSensor(i2c, 12, 'A')
+        self.ir_left = IrSensor(i2c, 12, 'B')
+        self.ir_back = IrSensor(i2c, 14, 'A')
     
-    def obstacleDetected(self, direction = Obstacle.FRONT):
+    def obstacleDetected(self, direction = 3):
         ret = Obstacle.NONE
         if direction & Obstacle.RIGHT:
             if self.ir_right.obstacleDetected():

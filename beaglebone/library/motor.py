@@ -38,8 +38,8 @@ class StepperBlock(object):
     2 steppers
     """
     def __init__(self, i2c, slave = SLAVE):
-        self.motorA = Stepper(i2c, 'A')
-        self.motorB = Stepper(i2c, 'B')
+        self.motorA = Stepper(i2c, slave, 'A')
+        self.motorB = Stepper(i2c, slave, 'B')
         self.i2c = i2c
         self.slave = slave
 
@@ -115,9 +115,10 @@ class StepperBlock(object):
         self.enable(enable);
 
 class Stepper(object):
-    def __init__(self, i2c, motor = 'A'):
+    def __init__(self, i2c, slave, motor = 'A'):
         self.motor = motor
         self.i2c = i2c
+        self.slave = slave
         
         self._acc = 1600.0
         self._max_speed = 400* 2.5

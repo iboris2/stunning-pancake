@@ -195,6 +195,8 @@ long readLong(uint8_t* buff) {
 #define CMD_SET_POS_B    0xC
 #define CMD_ENABLE_A     0xD
 #define CMD_ENABLE_B     0xE
+#define CMD_UPDATE_MOVE_A 0xF
+#define CMD_UPDATE_MOVE_B 0x10
 
 #define CMD_STORE_POS    0xAA
 unsigned char reg = 0x0;
@@ -210,16 +212,7 @@ void receiveEvent(int howMany) {
   /* force encoder update to prevent loosing step */
   if (!howMany) return;
   reg = Wire.read();
-  if (reg == CMD_STORE_POS) {/* broadcasted to all i2c slaves */
-    //storedEncA = myEncA.read();
-    storedPosA = stepperA.currentPosition();
-#ifdef USE_MOTOR_B
-    //storedEncB = myEncB.read();
-    storedPosB = stepperB.currentPosition();
-#endif
-    return;
-  }
-  if (reg > CMD_ENABLE_B) return; /* read register */
+  if (reg > CMD_UPDATE_MOVE_B) return; /* read register */
   Task* t = c_buff.push();
   if (howMany <= 15)
     t->len = howMany;
@@ -326,7 +319,7 @@ void handleTask() {
 #endif
     break;
     
- case CMD_ENABLE_A:
+  case CMD_ENABLE_A:
     if (t.len < 2) break;
     if (*buff_ptr)
       stepperA.enableOutputs();
@@ -343,6 +336,22 @@ void handleTask() {
       stepperB.disableOutputs();
 #endif
     break;
+    
+  case CMD_UPDATE_MOVE_A:
+    if (t.len < 5) break;
+    stepperA.enableOutputs();
+    stepperA.updateMove(readLong(buff_ptr));
+    buff_ptr += 4;
+    t.len -= 4;
+    /* no break */
+#ifdef USE_MOTOR_B
+  case CMD_UPDATE_MOVE_B:
+    if (t.len < 5) break;
+    stepperB.enableOutputs();
+    stepperB.updateMove(readLong(buff_ptr));
+#endif
+    break;
+    
   default:
     break;
   }

@@ -6,7 +6,6 @@ import time
 import odometry
 import evitement
 from evitement import Obstacle
-from ibus.modifier import FORWARD_MASK
 
 class Event(object):
     PRECISION = 0
@@ -24,7 +23,7 @@ class Blockage(object):
     BOTH = 3
     ANY = 4
     def __init__(self, odo):
-        self.odo = odometry.Odometry(1, 1)
+        self.odo = odo
         self.reset(9999999,9999999)
         self.threshold = 20 # check every 20mm
         self.max_ratio = 0.5 # 10mm error / 20 mm
@@ -116,17 +115,16 @@ class Navigation(object):
         self.D = 305.0
         self.rayon = self.D/2.0
         
-        self.encoder_tick_to_mm = 12.73
+        self.encoder_tick_to_mm = 1/12.73
         self.rayon_encoder = 280.0 / 2.0
         
         self.odo = odometry.Odometry(self.encoder_tick_to_mm, self.rayon_encoder)
         self.odo.position = (0,0)
-        self.odo.angle = 0
+        self.odo.angle = math.pi/2
         
         self.approach_speed = 90
         
         self.evitement = _evitement
-        self.evitement = evitement.Obstacle()
         
         self.blockage_detection = Blockage(self.odo)
         

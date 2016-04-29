@@ -61,14 +61,17 @@ class Servo(object):
         self.i2c = i2c
         self.slave = 0x40
         self.servo_num = servo_num
+        self._angle = 0
 
         self.configure( )
 
         self.low_addr = SERVO_L + (servo_num * SERVO_MULTIPLIER)
         self.high_addr = SERVO_H + (servo_num * SERVO_MULTIPLIER)
 
+    def angle_init(self, angle):
+        self._angle = angle
+
     def set_pwm(self, pwm):
-        print pwm
         if pwm < self.pw_min:
             pwm = self.pw_min
         if pwm > self.pw_max:
@@ -87,14 +90,16 @@ class Servo(object):
     
     @property
     def angle(self):
-        low = self.i2c.readTransaction(self.slave, self.low_addr, 1)[0]
-        high = self.i2c.readTransaction(self.slave, self.high_addr, 1)[0]
-        pw = low + (high * 256)
-        val = float(pw - self.pw_min) / float(self.pw_max - self.pw_min)
-        return val * (self.angle_max - self.angle_min) + self.angle_min
+#         low = self.i2c.readTransaction(self.slave, self.low_addr, 1)[0]
+#         high = self.i2c.readTransaction(self.slave, self.high_addr, 1)[0]
+#         pw = low + (high * 256)
+#         val = float(pw - self.pw_min) / float(self.pw_max - self.pw_min)
+#         return val * (self.angle_max - self.angle_min) + self.angle_min
+        return self._angle
     
     @angle.setter
     def angle(self, angle):
+        self._angle = angle
         val = float(angle - self.angle_min) / float(self.angle_max - self.angle_min)
         self.set_pwm(int(val * (self.pw_max - self.pw_min) + self.pw_min))
     
@@ -112,7 +117,6 @@ class Servo(object):
             if not pos:
                 break
             self.angle = pos
-            print pos
             time.sleep(dt)
 
     def disable(self):

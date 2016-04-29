@@ -8,11 +8,17 @@ from bbio.libraries.RotaryEncoder import RotaryEncoder
 import math
 import threading
 import time
+import os
 
 class Odometry(object):
-    def __init__(self, tick_to_mm, rayon):
+    REFRESH = 0.1
+    def __init__(self, tick_to_mm, rayon, coef_d=-1,coef_g=1):
+        self.coef_d = coef_d
+        self.coef_g = coef_g
         self.encoderR = RotaryEncoder(RotaryEncoder.EQEP0)
         self.encoderL = RotaryEncoder(RotaryEncoder.EQEP2b)
+        if os.system('insmod /root/bb/kernel/encoder/encoder.ko') == 0:
+            print "encoder ok"
         self.base_dir = self.encoderR.base_dir
         self.encoder_file = "%s/encoder" % self.base_dir
         self.X = 0.0
@@ -21,14 +27,15 @@ class Odometry(object):
         self.A_offset = 0.0
         self.tick_to_mm = tick_to_mm
         self.dist_to_mm = tick_to_mm / 2.0
-        self.teta_to_radian = tick_to_mm / rayon
-        self.previous = None
-        
+        self.teta_to_radian = tick_to_mm / (2.0 * math.pi * rayon)
         self.lock = threading.RLock()
+        
+        self.previous = None
+        self.init_encoder()
+
         self.myThread = None
         self.run  = True
         
-        d,g, self.A = self._get_encoder() #flust 1st value
         self.start()
     
     def start(self):  
@@ -63,13 +70,22 @@ class Odometry(object):
     @angle.setter
     def angle(self, angle):
         with self.lock:
+            self.A_offset = angle - self.A
+    
+    def init_encoder(self):
+        enc = sysfs.kernelFileIO(self.encoder_file).split()
+        d = int(enc[0]) * self.coef_d
+        g = int(enc[1]) * self.coef_g
+        angle = (d - g) * self.teta_to_radian
+        with self.lock:
+            self.previous = (d, g)
             self.A = angle
 
     def _get_encoder(self):
         enc = sysfs.kernelFileIO(self.encoder_file).split()
-        d = int(enc[0])
-        g = int(enc[1])
-        angle = (d - g) * self.teta_to_radian
+        d = int(enc[0]) * self.coef_d
+        g = int(enc[1]) * self.coef_g
+        angle = (d - g)
 
         ret = d - self.previous[0], g - self.previous[1], angle
         with self.lock:
@@ -86,7 +102,7 @@ class Odometry(object):
         with self.lock:
             self.X = X
             self.Y = Y
-            self.A = angle
+            self.A = angle * self.teta_to_radian
     
     def test(self,nb):
         a = 0.0
@@ -97,9 +113,10 @@ class Odometry(object):
     
     
     def odo_thread(self):
+
         while self.run:
             self.do_odo()
-            time.sleep(0.1)            
+            time.sleep(0.02)            
         
         
         

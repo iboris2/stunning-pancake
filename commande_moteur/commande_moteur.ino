@@ -9,8 +9,9 @@
 
 
 #define I2C_ADDRESS 12
-//#define I2C_ADDRESS 14
-
+#ifndef I2C_ADDRESS
+  #define I2C_ADDRESS 14
+#endif
 
 #define SAMPLETIME 20
 #define DEADBAND 80
@@ -138,6 +139,7 @@ void loop() {
     
    handleTask();
    pwmWatchdog();
+   update_sensors();
 }
 
 
@@ -475,14 +477,62 @@ char handleTask() {
   return 1;
 }
 
+/* ir sensor */
+#define SENSOR_BUFFER_LEN 6
+#define REFRESH_RATE  12000 // micros seconds
+
+struct ir_sensor {
+  int value[SENSOR_BUFFER_LEN];
+  int idx;
+  char pin;
+  unsigned long last_date;
+};
+
+struct ir_sensor ir_sensorA = {{0,0,0,0},0,A0,0};
+struct ir_sensor ir_sensorB = {{0,0,0,0},0,A1,REFRESH_RATE/2};
+
+void update_sensors(){
+  update_ir_sensor(&ir_sensorA);
+  update_ir_sensor(&ir_sensorB);
+}
+
+void update_ir_sensor(struct ir_sensor *sensor){
+  unsigned long date = micros();
+  if (date - sensor->last_date < REFRESH_RATE)
+    return;
+  sensor->last_date = date;
+  int data = analogRead(sensor->pin);
+  DEBUG_PRINTLN(data);
+  noInterrupts();
+  sensor->value[sensor->idx] = data;
+  interrupts();
+  sensor->idx++;
+  if (sensor->idx >=  SENSOR_BUFFER_LEN)
+    sensor->idx = 0;
+}
+
+int read_ir_sensor(struct ir_sensor *sensor){
+  long int data = 0;
+  unsigned char i;
+  for (i =0; i<SENSOR_BUFFER_LEN; i++){
+    data += sensor->value[i];
+  }
+  return data / SENSOR_BUFFER_LEN;
+  
+}
+
 /* read request */
 #define CMD_GET_POS_A     0x21
 #define CMD_GET_POS_B     0x22
 #define CMD_GET_PWM_A 0x23
 #define CMD_GET_PWM_B 0x24
 
+#define CMD_GET_IR_A 0x25
+#define CMD_GET_IR_B 0x26
+
 void requestEvent() {
   long value;
+  int val;
   toogle();
   switch (reg){
   case CMD_GET_POS_A:
@@ -507,7 +557,23 @@ void requestEvent() {
 #endif
   break;
 
+  case CMD_GET_IR_A:
+    val = read_ir_sensor(&ir_sensorA);
+    DEBUG_PRINT("irA ");
+    DEBUG_PRINTLN(val);
+    Wire.write((uint8_t *)(&val), 2);
+    break;
+
+  case CMD_GET_IR_B:
+    val = read_ir_sensor(&ir_sensorB);
+    DEBUG_PRINT("irB ");
+    DEBUG_PRINTLN(val);
+    Wire.write((uint8_t *)(&val), 2);
+  break;
+
   default:
   break;
   }
 }
+
+

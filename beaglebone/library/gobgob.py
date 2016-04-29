@@ -246,9 +246,9 @@ class Gobgob(asyncjob.AsyncJob):
         self.speed_up = 135.0
         self.speed_clamp = self.speed_up
         self.acc = 40.0
-        self.motD = Motor(i2c, 14, 'B', mm_to_tick = 20.0, reverse = 1)
-        self.motG = Motor(i2c, 12, 'A', mm_to_tick = 20.0, reverse = 1)
-        self.motH = Motor(i2c, 12, 'B', mm_to_tick = -30.0)
+        self.motD = Motor(i2c, 14, 'A', mm_to_tick = 20.0, reverse = 0)
+        self.motG = Motor(i2c, 12, 'B', mm_to_tick = 20.0, reverse = 1)
+        self.motH = Motor(i2c, 12, 'A', mm_to_tick = -30.0)
         self.disable()
         pos_init = (30, -30, 0)
         self.pos = pos_init
