@@ -52,7 +52,7 @@ class Blockage(object):
         #print "delta:", delta_rD, "-",odoD - self.odoD,  delta_rG, "-",odoG - self.odoG
         if delta_rD >= self.threshold:
             delta_odoD = abs(odoD - self.odoD)
-            print "delta D", delta_rD, delta_odoD
+            #print "delta D", delta_rD, delta_odoD
             if delta_odoD / delta_rD < self.max_ratio:
                 ret = ret | Blockage.RIGHT
             self.rD = rD
@@ -60,7 +60,7 @@ class Blockage(object):
         
         if delta_rG >= self.threshold:
             delta_odoG = abs(odoG - self.odoG)
-            print "delta G", delta_rG, delta_odoG
+            #print "delta G", delta_rG, delta_odoG
             if delta_odoG / delta_rG < self.max_ratio:
                 ret = ret | Blockage.LEFT
             self.rG = rG
@@ -177,7 +177,6 @@ class Navigation(object):
         dist = -1 * mm * self.mm_to_step
         self.motors.move(dist, dist)
         print "move", mm
-        print self.motors.remaining()
         return self.waitForEvent()
 
     def update_move(self, mm):
@@ -197,16 +196,22 @@ class Navigation(object):
             approach_speed = self.approach_speed
         
         precision = (speed*speed)/ (2.0 * acc)
-        
-        with MotorConfig(self,vmax=speed):
-            with ObstacleConfig(self, precision=precision, blockage=Blockage.ANY, obs_detection=Obstacle.NONE):
-                ret = self.move(distA)
-                if ret.type == Event.BLOCKAGE:
-                    return ret
+        if distA != 0.0:
+            with MotorConfig(self,vmax=speed):
+                with ObstacleConfig(self, precision=precision, blockage=Blockage.ANY, obs_detection=Obstacle.NONE):
+                    ret = self.move(distA)
+                    if ret.type == Event.BLOCKAGE:
+                        return ret
         with MotorConfig(self,vmax=speed):
             with ObstacleConfig(self, precision=1, blockage=Blockage.ANY, obs_detection=Obstacle.NONE):
                 ret = self.move(distB)
-                return ret       
+                return ret
+    def cap(self, new_angle, rayon=0):
+        print "cap", new_angle
+        angle = self.angle
+        new_angle = ClosestEquivalentAngle(angle, new_angle)
+        diff_angle = new_angle - angle
+        self.turn(diff_angle, rayon)      
 
     def turn(self, angle, rayon=0):
         if angle == 0.0:
@@ -243,7 +248,6 @@ class Navigation(object):
             self.waitForEvent(precision=2)
             
     def waitForEvent(self, timeout=15, precision=None, blockage=None, obs_detection=None):
-        print self.motors.remaining()
         start = time.time()
         time.sleep(0.10)
         if precision == None:
@@ -254,7 +258,6 @@ class Navigation(object):
         rD = abs(rD * self.step_to_mm)
         rG = abs(rG * self.step_to_mm)
         self.blockage_detection.reset(rD, rG)
-        print self.motors.remaining()
         
         if obs_detection == None:
             obs_detection = self.obs_detection
@@ -367,6 +370,7 @@ class Navigation(object):
             
     
     def goto(self, pos, rotate_only = False):
+        print "goto", pos
         x , y = self.position
         angle = self.angle
         new_angle = math.atan2(pos[1] - y, pos[0] - x)

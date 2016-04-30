@@ -1,3 +1,4 @@
+import math, vector
 class Playground(object):
     def __init__(self, color='purple'):
         self.color = color
@@ -6,6 +7,11 @@ class Playground(object):
             invert = - 1
         else:
             invert = 1
+        self.invert = invert
+        #robot 7 x 20.25
+        #28 x 40.5
+        self.start_pos = [1100-203, (1500 - 7) * invert]
+        self.start_angle = - math.pi/2 * invert
         
         self.all_seashell = []
         self.all_seashell.append([1250, 1300 * invert]) # 0
@@ -58,6 +64,9 @@ class Playground(object):
                      [58 * 2, 0]
                      ]
         
+        self.build_area = [[750 + 22, 24 * invert],
+                      [750 + 22+ 600, 24 * invert]
+                      ]
         
 
     def config(self, conf):
@@ -94,3 +103,8 @@ class Playground(object):
                             self.all_seashell[2], self.all_seashell[3], self.all_seashell[4]
                             ]
         
+    def vectorColor(self,val):
+        return vector.Vector(val[0], val[1] * self.invert)
+    
+    def capColor(self, angle):
+        return angle * self.invert
