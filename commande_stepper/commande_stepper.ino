@@ -149,10 +149,26 @@ ISR(TIMER1_COMPA_vect)
 
 CircularBuffer<Task,10> c_buff;
 
+long cached_distanceToGoA;
+long cached_distanceToGoB;
+
 void loop() {
-  stepperA.runStepBuffer();
+  if (stepperA.runStepBuffer()){
+      DEBUG_PRINT("m");
+    DEBUG_PRINT(stepperA.distanceToGo()+ step_remaining(&stepBuffA)/2);
+    DEBUG_PRINT("+");
+    DEBUG_PRINT(stepBuffA.step_added);
+    DEBUG_PRINT(" d");
+    DEBUG_PRINTLN(stepBuffA.step_consumed);
+    noInterrupts();
+    cached_distanceToGoA = stepperA.distanceToGo();
+    interrupts();
+  }
 #ifdef USE_MOTOR_B
   stepperB.runStepBuffer();
+  noInterrupts();
+  cached_distanceToGoB = stepperB.distanceToGo();
+  interrupts();
 #endif
   handleTask();
 }
@@ -251,6 +267,10 @@ void handleTask() {
     if (t.len < 5) break;
     stepperA.enableOutputs();
     stepperA.move(readLong(buff_ptr));
+    DEBUG_PRINT("move");
+    DEBUG_PRINT(stepperA.distanceToGo());
+    DEBUG_PRINT("+");
+    DEBUG_PRINTLN(step_remaining(&stepBuffA));
     buff_ptr += 4;
     t.len -= 4;
     /* no break */
@@ -259,6 +279,8 @@ void handleTask() {
     if (t.len < 5) break;
     stepperB.enableOutputs();
     stepperB.move(readLong(buff_ptr));
+    DEBUG_PRINT("move");
+    DEBUG_PRINTLN(stepperB.distanceToGo());
 #endif
     break;
 
@@ -366,16 +388,30 @@ void handleTask() {
 void requestEvent() {
   
   long value;
+  uint8_t remaining;
   long values[2];
   long offset=0;
   switch(reg){
   case CMD_REMAINING_A:
-    values[offset++] = stepperA.distanceToGo();
+    value = cached_distanceToGoA;
+    remaining = step_remaining(&stepBuffA) /2;
+    if (value >= 0)
+      values[offset++] = value + remaining;
+    else
+      values[offset++] = value - remaining;
     DEBUG_PRINT("remain A ");DEBUG_PRINTLN(values[offset-1]);
+    DEBUG_PRINT(value); DEBUG_PRINT(" ");DEBUG_PRINTLN(remaining);
     /* no break */
   #ifdef USE_MOTOR_B
-    values[offset++] = stepperB.distanceToGo();
+    case CMD_REMAINING_B:
+    value = cached_distanceToGoB;
+    remaining = step_remaining(&stepBuffB) /2;
+    if (value >= 0)
+      values[offset++] = value + remaining;
+    else
+      values[offset++] = value - remaining;
     DEBUG_PRINT("remain B ");DEBUG_PRINTLN(values[offset-1]);
+    DEBUG_PRINT(value);DEBUG_PRINT(" ");DEBUG_PRINTLN(remaining);
   #endif    
     Wire.write((uint8_t *)(values), 4*offset);
     break;

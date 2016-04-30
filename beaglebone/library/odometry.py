@@ -27,7 +27,7 @@ class Odometry(object):
         self.A_offset = 0.0
         self.tick_to_mm = tick_to_mm
         self.dist_to_mm = tick_to_mm / 2.0
-        self.teta_to_radian = tick_to_mm / (2.0 * math.pi * rayon)
+        self.teta_to_radian = self.dist_to_mm / rayon
         self.lock = threading.RLock()
         
         self.previous = None
@@ -75,7 +75,7 @@ class Odometry(object):
     def init_encoder(self):
         enc = sysfs.kernelFileIO(self.encoder_file).split()
         d = int(enc[0]) * self.coef_d
-        g = int(enc[1]) * self.coef_g
+        g = int(enc[1]) * self.coef_g * 1.5
         angle = (d - g) * self.teta_to_radian
         with self.lock:
             self.previous = (d, g)
@@ -84,7 +84,7 @@ class Odometry(object):
     def _get_encoder(self):
         enc = sysfs.kernelFileIO(self.encoder_file).split()
         d = int(enc[0]) * self.coef_d
-        g = int(enc[1]) * self.coef_g
+        g = int(enc[1]) * self.coef_g * 1.5
         angle = (d - g)
 
         ret = d - self.previous[0], g - self.previous[1], angle
