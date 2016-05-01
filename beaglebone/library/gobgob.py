@@ -541,6 +541,7 @@ class Gobgob(asyncjob.AsyncJob):
             self.quiet()            
             self.posG = - 310 / 2.0
             print "posG", self.posG
+            g.clamp(75,0)
          
             print "calib Done", self.pos
         self.disable()

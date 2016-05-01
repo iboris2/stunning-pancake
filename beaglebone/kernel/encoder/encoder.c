@@ -410,7 +410,6 @@ static ssize_t eqep_get_encoder(struct device *dev, struct device_attribute *att
 
 
     for (i=0; i< sizeof(registered_encoder_mmio)/sizeof(registered_encoder_mmio[0]) ;i++){
-    	dev_warn(dev, "mmio %x\n",registered_encoder_mmio[i]);
     	if (registered_encoder_mmio[i]){
     		cnt += sprintf(buf+cnt, "%d ", position[i]);
     	}
@@ -516,7 +515,6 @@ static int eqep_probe(struct platform_device *pdev)
     u16               status;
     u32               value;
     u32				  encId;
-    dev_warn(&pdev->dev, "Mega Coucou %d\n",nb_registered_encoder);
 
     // Select any default pins possible provided through the device tree
     pinctrl = devm_pinctrl_get_select_default(&pdev->dev);
@@ -586,7 +584,7 @@ static int eqep_probe(struct platform_device *pdev)
     }
     if (encId <= 2){
     	registered_encoder_mmio[encId] = eqep->mmio_base;
-    	dev_info(&pdev->dev, "add mmio %d, %x", encId, eqep->mmio_base);
+    	//dev_info(&pdev->dev, "add mmio %d, %x", encId, eqep->mmio_base);
     }
 
 
