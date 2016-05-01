@@ -108,3 +108,6 @@ class Playground(object):
     
     def capColor(self, angle):
         return angle * self.invert
+    
+    def clampColor(self, pos):
+        return pos * self.invert

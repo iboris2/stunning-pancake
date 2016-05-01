@@ -243,8 +243,8 @@ class Gobgob(asyncjob.AsyncJob):
     def __init__(self, i2c):
         asyncjob.AsyncJob.__init__(self, "Gobgob")
         self.lock = threading.RLock()
-        self.speed_up = 135.0
-        self.speed_clamp = self.speed_up
+        self.speed_up = 100
+        self.speed_clamp = 135.0
         self.acc = 40.0
         self.motD = Motor(i2c, 14, 'A', mm_to_tick = 20.0, reverse = 0)
         self.motG = Motor(i2c, 12, 'B', mm_to_tick = 20.0, reverse = 1)
@@ -468,7 +468,6 @@ class Gobgob(asyncjob.AsyncJob):
         # calib H
         print "Calib H"
         self.quiet()
-        time.sleep(2)
         self.motD.max_pwm = 0.8
         self.motG.max_pwm = 0.8
         self.motH.max_pwm = 0.8
@@ -500,7 +499,7 @@ class Gobgob(asyncjob.AsyncJob):
 #             self.quiet()
         #calib D
         print "Calib D"
-        time.sleep(3)
+        time.sleep(0.5)
         with ClampConfig(self, pwm_clamp = 0.55, pwm_up= 0.69 , speed = 72):
             print "max_pwm", self.motD.max_pwm, self.motG.max_pwm, self.motH.max_pwm
             print "from", self.pos
@@ -516,12 +515,12 @@ class Gobgob(asyncjob.AsyncJob):
 
             self.waitJob()
             self.quiet()
-            self.posD = 310 / 2.0
+            self.posD = 305 / 2.0
             print "posD", self.posD
 
         #calib G
         print "Calib G"
-        time.sleep(2)
+        time.sleep(0.5)
         with ClampConfig(self, pwm_clamp = 0.55, pwm_up= 0.69 , speed = 72):
             print "from", self.pos
             d, g, h = self.pos
@@ -539,9 +538,11 @@ class Gobgob(asyncjob.AsyncJob):
  
             self.waitJob()
             self.quiet()            
-            self.posG = - 310 / 2.0
+            self.posG = - 305 / 2.0
             print "posG", self.posG
-            g.clamp(75,0)
+            self.clamp(75,0)
+            self.up(20)
+            self.quiet()
          
             print "calib Done", self.pos
         self.disable()
