@@ -371,7 +371,7 @@ class Navigation(object):
     def goto(self, pos, rotate_only = False):
         nbtry = 3
         while True:
-            ev = self.goto(pos, rotate_only)
+            ev = self._goto(pos, rotate_only)
             if ev.type is Event.PRECISION:
                 return ev
             nbtry = nbtry - 1

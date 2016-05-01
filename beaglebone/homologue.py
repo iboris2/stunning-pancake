@@ -63,6 +63,58 @@ with MotorConfig(n, 200, 150):
 n.motors.disable()
 g.calibration()
 ihm.wait_starter()
+with ObstacleConfig(n, blockage = Blockage.NONE):
+    with MotorConfig(n, 400, 220):
+        n.move(100)
+        n.goto(play.vectorColor((520,850)))
+        g.up(60)
+        g.clamp(230, play.clampColor(-20))
+        n.goto(play.vectorColor((460,700)))
+        n.cap(-math.pi)
+        n.move_contact(0, 460 - robot.dist_block)
+        #take clock
+        n.move(-2)
+        g.up(20)
+        g.clamp(115, play.clampColor(-90))
+        g.up(25)
+    with MotorConfig(n, 400, 220):
+        n.move(-300)
+        n.goto(play.vectorColor((520,850)))
+        n.goto(play.vectorColor((1050,850)))
+        n.goto(play.vectorColor((1050,850)))
+        n.cap(play.capColor(-math.pi/2))
+        n.move_contact(0, abs(n.position[0]) - 24 - robot.dist_block -60 +20)
+        n.goto(Vector(play.build_area[1]) + play.vectorColor((-200,60 + 280 + robot.dist_front)))
+        g.clamp(115, play.clampColor(-60))
+        #release block
+        g.clamp(115+60, play.clampColor(-60+5))
+        #take tower
+        g.up(80+60)
+        g.clamp(61)
+        h = 90+60
+        g.up(h)
+        g.clamp(61, play.clampColor(80),h)
+        n.move(-50)
+        #depose tower
+        g.up(15)
+        #release
+        g.clamp(100)
+        n.move(-115+50)
+        g.clamp(115+60, play.clampColor(-60+5),80)
+        g.up(80)
+        n.move(65)
+        #take 2 block
+        g.clamp(120,play.clampColor(-60))
+        g.up(90)
+        n.move(-90)
+        g.up(20)
+        g.clamp(120,play.clampColor(44))
+        n.move(55)
+        g.up(15)
+        g.clamp(182)
+        n.move(-650)
+
+sys.exit()
 g.clamp(210, 0)
 #take sand
 sand = Vector(play.sand[0])
@@ -80,7 +132,7 @@ with MotorConfig(n, 150, 150):
     g.quiet()
     n.cap(play.capColor(-math.pi/2))
 with MotorConfig(n, 300, 220):
-    n.move_contact(0, 195)
+    n.move_contact(0, 190)
     n.move(-2)
     #release block
     g.clamp(130+60,play.clampColor(60-5))
@@ -107,5 +159,5 @@ with MotorConfig(n, 300, 220):
     n.move(55)
     g.up(15)
     g.clamp(182)
-    n.move(-150)
-    n.motors.disable()
+n.move(-650)
+n.motors.disable()
