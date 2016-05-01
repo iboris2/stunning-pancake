@@ -205,6 +205,7 @@ class Navigation(object):
         with MotorConfig(self,vmax=speed):
             with ObstacleConfig(self, precision=1, blockage=Blockage.ANY, obs_detection=Obstacle.NONE):
                 ret = self.move(distB)
+                self.stop(True)
                 return ret
     def cap(self, new_angle, rayon=0):
         print "cap", new_angle
@@ -367,9 +368,19 @@ class Navigation(object):
                     self.turn(angle, rayon)
                     self.move(dist)
 
-            
-    
     def goto(self, pos, rotate_only = False):
+        nbtry = 3
+        while True:
+            ev = self.goto(pos, rotate_only)
+            if ev.type is Event.PRECISION:
+                return ev
+            nbtry = nbtry - 1
+            if nbtry == 0:
+                return ev
+        
+                   
+    
+    def _goto(self, pos, rotate_only = False):
         print "goto", pos
         x , y = self.position
         angle = self.angle

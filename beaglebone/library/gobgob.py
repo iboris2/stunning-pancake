@@ -245,7 +245,7 @@ class Gobgob(asyncjob.AsyncJob):
         self.lock = threading.RLock()
         self.speed_up = 100
         self.speed_clamp = 135.0
-        self.acc = 40.0
+        self.acc = 80.0
         self.motD = Motor(i2c, 14, 'A', mm_to_tick = 20.0, reverse = 0)
         self.motG = Motor(i2c, 12, 'B', mm_to_tick = 20.0, reverse = 1)
         self.motH = Motor(i2c, 12, 'A', mm_to_tick = -30.0)
@@ -436,8 +436,10 @@ class Gobgob(asyncjob.AsyncJob):
         h = haut
         self.move((d, g, h), speed)
     
-    def clamp(self, e, X = None, speed = None):
+    def clamp(self, e, X = None, _h = None, speed = None):
         d, g, h = self.pos
+        if _h is not None:
+            h = _h
         if X == None:
             X = (d + g) / 2.0
         d = X + e/2.0

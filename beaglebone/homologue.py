@@ -59,51 +59,53 @@ n.position = play.start_pos
 n.angle = play.start_angle
 print "start pos", n.position, n.angle
 with MotorConfig(n, 200, 150):
-    n.move(10)
+    n.move(20)
 n.motors.disable()
 g.calibration()
 ihm.wait_starter()
 g.clamp(210, 0)
 #take sand
-#sand = Vector(play.sand[0])
-#sand += play.vectorColor((0, robot.dist_front + 30))
-#n.goto(sand)
+sand = Vector(play.sand[0])
+sand += play.vectorColor((0, robot.dist_front + 30))
+n.goto(sand)
 
 n.cap(play.capColor(-math.pi/2))
-time.sleep(2)
 with MotorConfig(n, 150, 150):
     n.move(100)
     g.clamp(135,0)
-    time.sleep(1)
 #with MotorConfig(n, 400, 150):
-    #n.goto(Vector(play.build_area[1]) + play.vectorColor(-200-300,160))
+    n.goto(Vector(play.build_area[1]) + play.vectorColor((-200,280 + robot.dist_front)))
     #g.addJob(lambda: g.clamp(134,play.clampColor(-63)))
-    g.clamp(134,play.clampColor(-63))
-    time.sleep(0.5)
+    g.clamp(130,play.clampColor(60))
     g.quiet()
-    time.sleep(0.5)
-    n.cap(-math.pi/2)
-with MotorConfig(n, 200, 150):
-    n.move_contact( 0, 160)
+    n.cap(play.capColor(-math.pi/2))
+with MotorConfig(n, 300, 220):
+    n.move_contact(0, 195)
     n.move(-2)
-    g.clamp(134+40,play.clampColor(-63+5))
+    #release block
+    g.clamp(130+60,play.clampColor(60-5))
     g.up(80)
-    g.clamp(62)
-    g.up(90)
-    g.clamp(62, play.clampColor(80))
+    #take cylindre
+    g.clamp(61)
+    h = 90
+    g.up(h)
+    g.clamp(61, play.clampColor(-80),h)
+    #depose tower
     g.up(15)
+    #release
     g.clamp(100)
-    time.sleep(0.2)
     n.move(-115)
-    g.clamp(138+40,play.clampColor(-63+5))
-    time.sleep(0.2)
+    g.up(20)
+    #open prepare tqcke 2 block
+    g.clamp(138+40,play.clampColor(60-5))
     n.move(65)
-    g.clamp(134)
-    time.sleep(0.2)
+    #take 2 block
+    g.clamp(120,play.clampColor(60-5),20)
+    g.up(28)
     n.move(-50)
-    g.clamp(134,play.clampColor(44))
-    time.sleep(0.2)
+    g.clamp(120,play.clampColor(-44))
     n.move(55)
-    g.clamp(180)
-    time.sleep(0.2)
+    g.up(15)
+    g.clamp(182)
     n.move(-150)
+    n.motors.disable()
