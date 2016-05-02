@@ -212,31 +212,44 @@ class Navigation(object):
         angle = self.angle
         new_angle = ClosestEquivalentAngle(angle, new_angle)
         diff_angle = new_angle - angle
-        self.turn(diff_angle, rayon)      
+        if rayon:
+            if diff_angle > 0:
+                rayon = -rayon
+        return self.turn(diff_angle, rayon)
+            
 
     def turn(self, angle, rayon=0):
-        if angle == 0.0:
-            return Event(Event.PRECISION)
-        mA = angle * (rayon + self.rayon)
-        mB = angle * (rayon - self.rayon)
-        # compute speed and acc
-        vmaxA, vmaxB = self.max_speed
-        accA, accB = self.acc
-        absA = abs(mA)
-        absB = abs(mB)
-        if absA > absB:
-            coeff = absB/absA
-            vmaxB = vmaxB * coeff
-            accB = accB * coeff
-        else:
-            coeff = absA/absB
-            vmaxA = vmaxA * coeff
-            accA = accA * coeff
-        
-        with MotorConfig(self, (accA, accB), (vmaxA, vmaxB)):
-            self.motors.move(mA * self.mm_to_step , mB * self.mm_to_step)
-            print "turn", angle, rayon 
-            return self.waitForEvent()
+        nbtry = 2
+        new_angle = self.angle + angle
+        while True:
+            if angle == 0.0:
+                return Event(Event.PRECISION)
+            mA = angle * (rayon + self.rayon)
+            mB = angle * (rayon - self.rayon)
+            # compute speed and acc
+            vmaxA, vmaxB = self.max_speed
+            accA, accB = self.acc
+            absA = abs(mA)
+            absB = abs(mB)
+            if absA > absB:
+                coeff = absB/absA
+                vmaxB = vmaxB * coeff
+                accB = accB * coeff
+            else:
+                coeff = absA/absB
+                vmaxA = vmaxA * coeff
+                accA = accA * coeff
+            
+            with MotorConfig(self, (accA, accB), (vmaxA, vmaxB)):
+                self.motors.move(mA * self.mm_to_step , mB * self.mm_to_step)
+                print "turn", angle, rayon 
+                ret = self.waitForEvent(precision=0.5)
+                error_angle = new_angle - self.angle 
+                print "error cap",  error_angle
+                if abs(error_angle) < 0.02 or nbtry == 0:
+                    return ret
+                nbtry = nbtry -1
+                angle = error_angle
     
     def stop(self, emergency=False):
         print "stop", emergency
@@ -368,10 +381,13 @@ class Navigation(object):
                     self.turn(angle, rayon)
                     self.move(dist)
 
-    def goto(self, pos, rotate_only = False):
+    def reculeto(self, pos, rot_rayon=0, rotate_only = False):
+        return self.goto(pos,rot_rayon, True, rotate_only)
+        
+    def goto(self, pos, rot_rayon=0, recule = False, rotate_only = False):
         nbtry = 3
         while True:
-            ev = self._goto(pos, rotate_only)
+            ev = self._goto(pos, rot_rayon, recule, rotate_only)
             if ev.type is Event.PRECISION:
                 return ev
             nbtry = nbtry - 1
@@ -380,15 +396,21 @@ class Navigation(object):
         
                    
     
-    def _goto(self, pos, rotate_only = False):
+    def _goto(self, pos, rot_rayon, recule, rotate_only):
         print "goto", pos
         x , y = self.position
         angle = self.angle
+        if recule:
+            angle += math.pi
         new_angle = math.atan2(pos[1] - y, pos[0] - x)
         new_angle = ClosestEquivalentAngle(angle, new_angle)
         diff_angle = new_angle - angle
-        
-        ev = self.turn(diff_angle)
+        if rot_rayon:
+            if diff_angle > 0:
+                rot_rayon = -rot_rayon
+            if recule:
+                rot_rayon = -rot_rayon
+        ev = self.turn(diff_angle, rot_rayon)
         if (diff_angle > 0.0):
             self.eventReaction(ev, EventReaction.TURN_LEFT)
         else:
@@ -397,6 +419,8 @@ class Navigation(object):
             return ev
         x , y = self.position
         dist = math.sqrt(   (pos[1] - y)**2 + (pos[0] - x)**2)
+        if recule:
+            dist = -dist
         ev = self.move(dist)
         if (dist > 0.0):
             self.eventReaction(ev, EventReaction.MOVING_FORWARD)

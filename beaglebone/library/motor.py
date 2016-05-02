@@ -120,8 +120,6 @@ class Stepper(object):
         self.i2c = i2c
         self.slave = slave
         
-        self._acc = 1600.0
-        self._max_speed = 400* 2.5
         
         if self.motor == 'A':
             self.CMD_MOVE_TO = CMD_MOVE_TO_A
@@ -144,7 +142,10 @@ class Stepper(object):
             self.CMD_ENABLE = CMD_ENABLE_B
             self.CMD_UPDATE_MOVE = CMD_UPDATE_MOVE_B
             self.CMD_REMAINING = CMD_REMAINING_B
-            self.CMD_GET_POS = CMD_GET_POS_B        
+            self.CMD_GET_POS = CMD_GET_POS_B
+            
+        self.acc = 800.0
+        self.max_speed = 400* 2.0      
 
     def move_to(self, pos):
         buff = struct.unpack("4B", struct.pack("i", pos))

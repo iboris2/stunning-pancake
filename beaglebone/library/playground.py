@@ -10,7 +10,7 @@ class Playground(object):
         self.invert = invert
         #robot 7 x 20.25
         #28 x 40.5
-        self.start_pos = [1100-203, (1500 - 7) * invert]
+        self.start_pos = [1100-203, (1500 - 70) * invert]
         self.start_angle = - math.pi/2 * invert
         
         self.all_seashell = []
@@ -36,6 +36,7 @@ class Playground(object):
                     [0, 1200 * invert],
                     [0, 900 * invert] 
                     ]
+        self.close_hut = (110, (1200+900)* invert/2.0)
         #fish spot
         self._fish_area = [ 
                           [2000, 1000 * invert],                    

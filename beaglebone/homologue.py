@@ -1,3 +1,7 @@
+import rlcompleter, readline
+readline.parse_and_bind('tab:complete')
+
+
 import sys, time
 sys.path.append('library')
 from playground import *
@@ -70,9 +74,9 @@ def prepare_tower(big):
         g.up(20)
         n.move(-130)
         prev = 100
-        g.clamp(prev + 160, play.clampColor(-95 +160/2.0)*side)
+        g.clamp(prev + 180, play.clampColor(-95 +180/2.0)*side)
         with MotorConfig(n, 280, 220):
-            dist = 100+30
+            dist = 102+30
             if big:
                 dist += 35
             n.move(dist)
@@ -125,12 +129,13 @@ g.calibration()
 ihm.wait_starter()
 print "ma position"
 print n.position
+n.blockage = Blockage.NONE
 
 g.clamp(150, play.clampColor(38),85)
 #g.up(80)
-g.clamp(150, play.clampColor(-38),85+60)
+#g.clamp(150, play.clampColor(-38),85+60)
 sand = Vector(play.sand[0])
-sand += play.vectorColor((-30, robot.dist_front + 100))
+sand += play.vectorColor((30, robot.dist_front + 35))
 n.goto(sand)
 print "ma position"
 print n.position
@@ -138,14 +143,42 @@ n.cap(play.capColor(-math.pi/2))
 
 with MotorConfig(n, 270, 220):
     n.move(100+20)
-prepare_big()
+prepare_small()
+dist_bord = 280
+with MotorConfig(n, 300, 220):
+    n.goto(Vector(play.build_area[1]) + play.vectorColor((-200,dist_bord + robot.dist_block)),robot.rot_rayon)   
+    n.cap(play.capColor(-math.pi/2),robot.rot_rayon)
+
+    n.move_contact(0, dist_bord-30)
+    g.clamp(240)
+    n.move(-750)
     
+#close hut
+n.reculeto(play.close_hut)
+n.cap(0)
+with MotorConfig(n, 300, 220): 
+    n.move_contact(0, -90)
+    n.cap(0)
+    n.move_contact(0, -50)
+n.move(350)
 
-
+#goto next block
+n.goto(Vector(play.sand[1])+Vector(420,0))
+n.cap(-math.pi)
+x,y = n.position
+g.clamp(292,play.clampColor(-15),55)
+with MotorConfig(n, 200, 220): 
+    n.move_contact(0, x - robot.dist_block + 20)
+    n.move(-2)
+    g.up(20)
+    prev = 292
+    suiv = 120
+    g.clamp(suiv, play.clampColor(-15 +(suiv-prev)/2.0), 20)
+    n.move(-200)
 
 n.motors.disable()
 g.disable()
-sys.exit()
+toto()
 deposeBig()
 with ObstacleConfig(n, blockage = Blockage.NONE):
     with MotorConfig(n, 400, 220):
@@ -167,7 +200,7 @@ with ObstacleConfig(n, blockage = Blockage.NONE):
         n.goto(play.vectorColor((1050,850)))
         n.goto(play.vectorColor((1050,850)))
         n.cap(play.capColor(-math.pi/2))
-        n.move_contact(0, abs(n.position[0]) - 24 - robot.dist_block -60 +20)
+        n.move_contact(0, abs(n.position[1]) - 24 - robot.dist_block -60 +20)
         #n.goto(Vector(play.build_area[1]) + play.vectorColor((-200,60 + 280 + robot.dist_front)))
         g.clamp(115, play.clampColor(-55))
         #release block
@@ -210,7 +243,7 @@ with MotorConfig(n, 150, 150):
     n.move(100)
     g.clamp(135,0)
 #with MotorConfig(n, 400, 150):
-    n.goto(Vector(play.build_area[1]) + play.vectorColor((-200,280 + robot.dist_front)))
+    n.goto(Vector(play.build_area[1]) + play.vectorColor((-200,280 + robot.dist_block)))
     #g.addJob(lambda: g.clamp(134,play.clampColor(-63)))
     g.clamp(130,play.clampColor(60))
     g.quiet()
