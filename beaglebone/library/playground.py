@@ -1,4 +1,5 @@
 import math, vector
+import robot
 class Playground(object):
     def __init__(self, color='purple'):
         self.color = color
@@ -42,14 +43,16 @@ class Playground(object):
                           [2000, 1000 * invert],                    
                           [2000, 600 * invert]
                           ]
-        e = 80
+        e = 70
+        ecart_fish_spot = 300
+        self.fish_spot_contact = ecart_fish_spot - robot.dist_back + 30
         self.fish_spot = [
-                          [2000, (800 + e) * invert],                    
-                          [2000, (800 - e) * invert]
+                          [2000-ecart_fish_spot, (820 + e) * invert],                    
+                          [2000-ecart_fish_spot, (820 - e) * invert]
                           ]
         self._depose_area = [ 
-                          [2000, 550 * invert],                    
-                          [2000, 0 * invert]
+                          [2000-ecart_fish_spot, 550 * invert],                    
+                          [2000-ecart_fish_spot, 450 * invert]
                           ]
         ecart_bord = 180
         ecart_spot = 150
@@ -61,7 +64,7 @@ class Playground(object):
         #sand
         self.sand = [
                      [900, 850 * invert],
-                     [58, 678 * invert],
+                     [58, 668 * invert],
                      [58 * 2, 0]
                      ]
         

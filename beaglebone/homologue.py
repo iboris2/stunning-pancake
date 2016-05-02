@@ -13,35 +13,41 @@ import bbio
 import gobgob
 import actuator
 import robot
+import threading
 import math
 from vector import *
 
 class myi2c(object):
-    def __init__(self, i2c):
+    def __init__(self, i2c, id=0):
         self.i2c = i2c
+        self.id = id
+        self.lock = threading.RLock()
+        
     
     def write(self,a,b):
-        nbtry = 4
-        while nbtry:
-            nbtry = nbtry - 1
-            try:
-                ret = self.i2c.write(a, b)
-                return ret
-            except:
-                print "i2c ERROR"
-                pass
+        with self.lock:
+            nbtry = 4
+            while nbtry:
+                nbtry = nbtry - 1
+                try:
+                    ret = self.i2c.write(a, b)
+                    return ret
+                except:
+                    print "i2c ERROR", self.id
+                    pass
         
     
     def readTransaction(self,a,b,c):
-        nbtry = 3
-        while nbtry:
-            nbtry = nbtry - 1
-            try:
-                ret = self.i2c.readTransaction(a,b,c)
-                return ret
-            except:
-                print "i2c ERROR"
-                pass
+        with self.lock:
+            nbtry = 4
+            while nbtry:
+                nbtry = nbtry - 1
+                try:
+                    ret = self.i2c.readTransaction(a,b,c)
+                    return ret
+                except:
+                    print "i2c ERROR", self.id
+                    pass
 
 _s = bbio.Wire1
 _s2 = bbio.Wire2
@@ -49,8 +55,8 @@ _s2 = bbio.Wire2
 _s.begin()
 _s2.begin()
 
-s = myi2c(_s)
-s2 = myi2c(_s2)
+s = myi2c(_s, 1)
+s2 = myi2c(_s2, 2)
 
 def prepare_small():
     prepare_tower(0)
@@ -82,35 +88,24 @@ def prepare_tower(big):
             n.move(dist)
             g.clamp(185,0)
 
-def deposeBig():
-    with MotorConfig(n, 400, 220):
-        g.clamp(120, play.clampColor(-55))
-        #release block
-        g.clamp(120+70, play.clampColor(-55))
-        #take tower
-        g.up(80+60)
-        g.clamp(61)
-        h = 90+60
-        g.up(h)
-        g.clamp(61, play.clampColor(80),h)
-        n.move(-50)
-        #depose tower
-        g.up(10)
-        #release
-        g.clamp(100)
-        n.move(-125+50)
-        g.clamp(120+95, play.clampColor(-55),80)
-        g.up(80)
-        n.move(70)
-        #take 2 block
-        g.clamp(120,play.clampColor(-55))
-        g.up(90)
-        n.move(-90)
-        g.up(20)
-        g.clamp(120,play.clampColor(20),20)
-        n.move(38)
-        g.up(10)
-        g.clamp(182)
+def fish(spot=0):
+    print "fish"
+    n.goto(play.fish_spot[spot])
+    n.cap(math.pi)
+    n.move_contact(0,-play.fish_spot_contact+40)
+    a.poisson.down()
+    with MotorConfig(n, 350, 220):
+        n.move(30)
+        n.move(-30)
+        a.poisson.up()
+        n.move(30)
+        n.goto(play.depose_spot[spot],robot.rot_rayon)
+        n.cap(math.pi)
+        x,y = n.position
+        n.move_contact(0,(1500-x) - robot.dist_back + 80 )
+        a.poisson.release()
+        n.move(250)
+        g.addJob(lambda: a.poisson.up()) #async
 
 g = gobgob.Gobgob(s2)
 n = Navigation(motor.StepperBlock(s),evitement.Obstacle(s2)) 
@@ -166,8 +161,9 @@ n.move(350)
 n.goto(Vector(play.sand[1])+Vector(420,0))
 n.cap(-math.pi)
 x,y = n.position
-g.clamp(292,play.clampColor(-15),55)
-with MotorConfig(n, 200, 220): 
+print x, "cm du bord", y
+g.clamp(294,play.clampColor(-15),55)
+with MotorConfig(n, 230, 220): 
     n.move_contact(0, x - robot.dist_block + 20)
     n.move(-2)
     prev = 292
@@ -176,11 +172,14 @@ with MotorConfig(n, 200, 220):
     g.up(20)
     g.clamp(120)
     n.move(-190)
+    n.turn(play.capColor(math.pi),play.capColor(robot.rayon-25))
     n.cap(play.capColor(0), -(robot.rayon-25))
     g.clamp(120,0)
     #got to depose
-    n.goto(play.vectorColor((play.build_area[1]-200 - 65, 1050)))
+    n.goto(play.vectorColor((play.build_area[1][0]-200 - 65, 1050)))
     n.cap(play.capColor(-math.pi/2))
+    g.clamp(190)
+    g.up(140)
     prepare_big()
     dist_bord = 280 + 120
 with MotorConfig(n, 300, 220):
@@ -189,7 +188,13 @@ with MotorConfig(n, 300, 220):
 
     n.move_contact(0, dist_bord)
     g.clamp(240)
-    n.move(-750)
+n.move(-350)
+
+#goto fish
+g.addJob(lambda: g.clamp(70,0,65)) 
+fish(0)
+fish(1)
+    
     
 
 n.motors.disable()
