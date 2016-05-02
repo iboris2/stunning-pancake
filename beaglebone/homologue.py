@@ -170,11 +170,27 @@ g.clamp(292,play.clampColor(-15),55)
 with MotorConfig(n, 200, 220): 
     n.move_contact(0, x - robot.dist_block + 20)
     n.move(-2)
-    g.up(20)
     prev = 292
-    suiv = 120
-    g.clamp(suiv, play.clampColor(-15 +(suiv-prev)/2.0), 20)
-    n.move(-200)
+    suiv = 140
+    g.clamp(suiv, play.clampColor(-15 +(suiv-prev)/2.0), 55)
+    g.up(20)
+    g.clamp(120)
+    n.move(-190)
+    n.cap(play.capColor(0), -(robot.rayon-25))
+    g.clamp(120,0)
+    #got to depose
+    n.goto(play.vectorColor((play.build_area[1]-200 - 65, 1050)))
+    n.cap(play.capColor(-math.pi/2))
+    prepare_big()
+    dist_bord = 280 + 120
+with MotorConfig(n, 300, 220):
+    n.goto(Vector(play.build_area[1]) + play.vectorColor((-200 - 65,dist_bord + robot.dist_block)),robot.rot_rayon)   
+    n.cap(play.capColor(-math.pi/2),robot.rot_rayon)
+
+    n.move_contact(0, dist_bord)
+    g.clamp(240)
+    n.move(-750)
+    
 
 n.motors.disable()
 g.disable()
