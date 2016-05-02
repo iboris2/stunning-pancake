@@ -436,10 +436,10 @@ class Gobgob(asyncjob.AsyncJob):
         h = haut
         self.move((d, g, h), speed)
     
-    def clamp(self, e, X = None, _h = None, speed = None):
+    def clamp(self, e, X = None, H = None, speed = None):
         d, g, h = self.pos
-        if _h is not None:
-            h = _h
+        if H is not None:
+            h = H
         if X == None:
             X = (d + g) / 2.0
         d = X + e/2.0
@@ -453,7 +453,7 @@ class Gobgob(asyncjob.AsyncJob):
                 break
             dt, gt, ht = self.target
             d, g, h = self.pos
-            print dt, gt, ht, "vs", d, g, h
+            #print dt, gt, ht, "vs", d, g, h
             if 'd' in axes:
                 if abs(d - dt) > delta:
                     return 'd'

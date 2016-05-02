@@ -17,7 +17,7 @@ class myi2c(object):
         self.i2c = i2c
     
     def write(self,a,b):
-        nbtry = 3
+        nbtry = 4
         while nbtry:
             nbtry = nbtry - 1
             try:
@@ -48,6 +48,66 @@ _s2.begin()
 s = myi2c(_s)
 s2 = myi2c(_s2)
 
+def prepare_small():
+    prepare_tower(0)
+    
+def prepare_big():
+    prepare_tower(1)
+       
+def prepare_tower(big):
+    with MotorConfig(n, 400, 220):
+        if big:
+            offset_h = 60
+            side = -1
+        else:
+            offset_h = 0
+            side = 1        
+        g.clamp(61)
+        g.up(90+offset_h)
+        g.clamp(61, play.clampColor(-95)*side)
+        g.up(10)
+        g.clamp(e=103,H=15)
+        g.up(20)
+        n.move(-130)
+        prev = 100
+        g.clamp(prev + 160, play.clampColor(-95 +160/2.0)*side)
+        with MotorConfig(n, 280, 220):
+            dist = 100+30
+            if big:
+                dist += 35
+            n.move(dist)
+            g.clamp(185,0)
+
+def deposeBig():
+    with MotorConfig(n, 400, 220):
+        g.clamp(120, play.clampColor(-55))
+        #release block
+        g.clamp(120+70, play.clampColor(-55))
+        #take tower
+        g.up(80+60)
+        g.clamp(61)
+        h = 90+60
+        g.up(h)
+        g.clamp(61, play.clampColor(80),h)
+        n.move(-50)
+        #depose tower
+        g.up(10)
+        #release
+        g.clamp(100)
+        n.move(-125+50)
+        g.clamp(120+95, play.clampColor(-55),80)
+        g.up(80)
+        n.move(70)
+        #take 2 block
+        g.clamp(120,play.clampColor(-55))
+        g.up(90)
+        n.move(-90)
+        g.up(20)
+        g.clamp(120,play.clampColor(20),20)
+        n.move(38)
+        g.up(10)
+        g.clamp(182)
+
 g = gobgob.Gobgob(s2)
 n = Navigation(motor.StepperBlock(s),evitement.Obstacle(s2)) 
 a = actuator.Actuator(s)
@@ -63,6 +123,30 @@ with MotorConfig(n, 200, 150):
 n.motors.disable()
 g.calibration()
 ihm.wait_starter()
+print "ma position"
+print n.position
+
+g.clamp(150, play.clampColor(38),85)
+#g.up(80)
+g.clamp(150, play.clampColor(-38),85+60)
+sand = Vector(play.sand[0])
+sand += play.vectorColor((-30, robot.dist_front + 100))
+n.goto(sand)
+print "ma position"
+print n.position
+n.cap(play.capColor(-math.pi/2))
+
+with MotorConfig(n, 270, 220):
+    n.move(100+20)
+prepare_big()
+    
+
+
+
+n.motors.disable()
+g.disable()
+sys.exit()
+deposeBig()
 with ObstacleConfig(n, blockage = Blockage.NONE):
     with MotorConfig(n, 400, 220):
         n.move(100)
@@ -75,7 +159,7 @@ with ObstacleConfig(n, blockage = Blockage.NONE):
         #take clock
         n.move(-2)
         g.up(20)
-        g.clamp(115, play.clampColor(-90))
+        g.clamp(110, play.clampColor(-80))
         g.up(25)
     with MotorConfig(n, 400, 220):
         n.move(-300)
@@ -84,10 +168,10 @@ with ObstacleConfig(n, blockage = Blockage.NONE):
         n.goto(play.vectorColor((1050,850)))
         n.cap(play.capColor(-math.pi/2))
         n.move_contact(0, abs(n.position[0]) - 24 - robot.dist_block -60 +20)
-        n.goto(Vector(play.build_area[1]) + play.vectorColor((-200,60 + 280 + robot.dist_front)))
-        g.clamp(115, play.clampColor(-60))
+        #n.goto(Vector(play.build_area[1]) + play.vectorColor((-200,60 + 280 + robot.dist_front)))
+        g.clamp(115, play.clampColor(-55))
         #release block
-        g.clamp(115+60, play.clampColor(-60+5))
+        g.clamp(115+70, play.clampColor(-55))
         #take tower
         g.up(80+60)
         g.clamp(61)
@@ -96,21 +180,21 @@ with ObstacleConfig(n, blockage = Blockage.NONE):
         g.clamp(61, play.clampColor(80),h)
         n.move(-50)
         #depose tower
-        g.up(15)
+        g.up(10)
         #release
         g.clamp(100)
-        n.move(-115+50)
-        g.clamp(115+60, play.clampColor(-60+5),80)
+        n.move(-125+50)
+        g.clamp(115+95, play.clampColor(-55),80)
         g.up(80)
-        n.move(65)
+        n.move(70)
         #take 2 block
-        g.clamp(120,play.clampColor(-60))
+        g.clamp(120,play.clampColor(-55))
         g.up(90)
         n.move(-90)
         g.up(20)
-        g.clamp(120,play.clampColor(44))
-        n.move(55)
-        g.up(15)
+        g.clamp(120,play.clampColor(20),20)
+        n.move(30)
+        g.up(10)
         g.clamp(182)
         n.move(-650)
 
