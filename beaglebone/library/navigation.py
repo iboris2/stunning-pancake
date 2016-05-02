@@ -305,7 +305,7 @@ class Navigation(object):
                 return Event(Event.TIMEOUT)
             
             #todo blockage
-            time.sleep(0.02);
+            time.sleep(0.04);
     
     @property
     def position(self):

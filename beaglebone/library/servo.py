@@ -104,7 +104,7 @@ class Servo(object):
         self.set_pwm(int(val * (self.pw_max - self.pw_min) + self.pw_min))
     
     def move(self, angle, speed = None, acc = None):
-        dt = 0.05
+        dt = 0.06
         if speed == None:
             speed = self.speed
         if acc == None:

@@ -105,11 +105,11 @@ def fish(spot=0):
         n.move_contact(0,(1500-x) - robot.dist_back + 80 )
         a.poisson.release()
         n.move(250)
-        g.addJob(lambda: a.poisson.up()) #async
+        a.poisson.up()#async
 
-g = gobgob.Gobgob(s2)
-n = Navigation(motor.StepperBlock(s),evitement.Obstacle(s2)) 
-a = actuator.Actuator(s)
+g = gobgob.Gobgob(s)
+n = Navigation(motor.StepperBlock(s),evitement.Obstacle(s)) 
+a = actuator.Actuator(s2)
 n.motors.disable()
 ihm = Ihm()
 color, strategy = ihm.prepare()
