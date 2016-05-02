@@ -15,8 +15,8 @@ class Playground(object):
         self.start_angle = - math.pi/2 * invert
         
         self.all_seashell = []
-        self.all_seashell.append([1250, 1300 * invert]) # 0
-        self.all_seashell.append([1550, 1300 * invert]) #1
+        self.all_seashell.append([1250, 1250 * invert]) # 0
+        self.all_seashell.append([1500, 1250 * invert]) #1
        
         self.all_seashell.append([1250, 800 * invert]) #2
         self.all_seashell.append([1550, 800 * invert]) #3
@@ -30,7 +30,7 @@ class Playground(object):
        
         self.all_seashell.append([1650, -300 * invert]) #9
         
-        self.seasheel_collect = [850, 1200 * invert]
+        self.seasheel_collect = [850, 1180 * invert]
         
         # door
         self.hut = [

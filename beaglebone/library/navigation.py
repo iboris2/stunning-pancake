@@ -381,13 +381,13 @@ class Navigation(object):
                     self.turn(angle, rayon)
                     self.move(dist)
 
-    def reculeto(self, pos, rot_rayon=0, rotate_only = False):
-        return self.goto(pos,rot_rayon, True, rotate_only)
+    def reculeto(self, pos, rot_rayon=0, rotate_only = False, offset=0):
+        return self.goto(pos,rot_rayon, True, rotate_only, offset)
         
-    def goto(self, pos, rot_rayon=0, recule = False, rotate_only = False):
+    def goto(self, pos, rot_rayon=0, recule = False, rotate_only = False, offset=0):
         nbtry = 3
         while True:
-            ev = self._goto(pos, rot_rayon, recule, rotate_only)
+            ev = self._goto(pos, rot_rayon, recule, rotate_only, offset)
             if ev.type is Event.PRECISION:
                 return ev
             nbtry = nbtry - 1
@@ -396,7 +396,7 @@ class Navigation(object):
         
                    
     
-    def _goto(self, pos, rot_rayon, recule, rotate_only):
+    def _goto(self, pos, rot_rayon, recule, rotate_only, offset):
         print "goto", pos
         x , y = self.position
         angle = self.angle
@@ -417,8 +417,13 @@ class Navigation(object):
             self.eventReaction(ev, EventReaction.TURN_RIGHT)    
         if ev.type is not Event.PRECISION:
             return ev
+        if rotate_only:
+            return ev
         x , y = self.position
         dist = math.sqrt(   (pos[1] - y)**2 + (pos[0] - x)**2)
+        dist += offset
+        if dist < 0.0:
+            dist = 0.0
         if recule:
             dist = -dist
         ev = self.move(dist)

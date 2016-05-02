@@ -114,6 +114,7 @@ n.motors.disable()
 ihm = Ihm()
 color, strategy = ihm.prepare()
 play = Playground(color)
+play.config(strategy)
 n.position = play.start_pos
 n.angle = play.start_angle
 print "start pos", n.position, n.angle
@@ -146,7 +147,23 @@ with MotorConfig(n, 300, 220):
 
     n.move_contact(0, dist_bord-30)
     g.clamp(240)
-    n.move(-750)
+    n.move(-740)
+    
+#shell
+g.clamp(300,0)
+toto()
+if strategy == 0:
+    offset = -100
+    n.goto(pos = play.seasheel[2], offset=offset)
+    n.goto(pos = play.seasheel[1],rot_rayon=120, offset=offset, rotate_only=True)
+    n.goto(pos = play.seasheel[1], offset=offset)
+    n.goto(pos = play.seasheel[0],rot_rayon=80, offset=offset, rotate_only=True)
+    n.goto(pos = play.seasheel[0], offset=offset)
+    n.goto(pos = play.seasheel_collect, offset=offset)
+    n.cap(play.capColor(math.pi/2),60)
+
+n.move(-200)
+
     
 #close hut
 n.reculeto(play.close_hut)
