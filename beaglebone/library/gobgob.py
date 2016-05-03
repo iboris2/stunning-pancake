@@ -243,8 +243,8 @@ class Gobgob(asyncjob.AsyncJob):
     def __init__(self, i2c):
         asyncjob.AsyncJob.__init__(self, "Gobgob")
         self.lock = threading.RLock()
-        self.speed_up = 100
-        self.speed_clamp = 135.0
+        self.speed_up = 110
+        self.speed_clamp = 138.0
         self.acc = 80.0
         self.motD = Motor(i2c, 14, 'A', mm_to_tick = 20.0, reverse = 0)
         self.motG = Motor(i2c, 12, 'B', mm_to_tick = 20.0, reverse = 1)

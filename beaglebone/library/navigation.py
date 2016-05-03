@@ -4,8 +4,8 @@
 import math
 import time
 import odometry
-import evitement
 from evitement import Obstacle
+from vector import Vector
 
 class Event(object):
     PRECISION = 0
@@ -169,15 +169,42 @@ class Navigation(object):
             a = acc
         else:
             a = (acc, acc)
-        self.motors.acc = tuple([self.mm_to_step * x for x in a]) 
-
+        self.motors.acc = tuple([self.mm_to_step * x for x in a])
+    
     def move(self, mm):
+        nbtry = 2
+        while True:
+            start = Vector(self.position)
+            ev = self._move(mm)
+            if ev.type is Event.PRECISION:
+                return ev
+            end = Vector(self.position)
+            if (mm > 0.0):
+                self.simpleEventReaction(ev, EventReaction.MOVING_FORWARD)
+            else:
+                self.simpleEventReaction(ev, EventReaction.MOVING_BACKWARD)
+            after = Vector(self.position)
+            if mm > 0.0:
+                mm = mm - (end-start).norm() + (after-end).norm()
+            else:
+                mm = mm + (end-start).norm() - (after-end).norm()
+            if nbtry == 0:
+                return ev
+            nbtry -= 1
+            
+
+    def _move(self, mm):
         if mm == 0.0:
             return Event(Event.PRECISION)
+        obs_detection = self.obs_detection
+        if mm > 0.0:
+            obs_detection = obs_detection & Obstacle.FRONT
+        else:
+            obs_detection = obs_detection & Obstacle.BACK
         dist = -1 * mm * self.mm_to_step
         self.motors.move(dist, dist)
         print "move", mm
-        return self.waitForEvent()
+        return self.waitForEvent(obs_detection=obs_detection)
 
     def update_move(self, mm):
         if mm == 0.0:
@@ -199,12 +226,12 @@ class Navigation(object):
         if distA != 0.0:
             with MotorConfig(self,vmax=speed):
                 with ObstacleConfig(self, precision=precision, blockage=Blockage.ANY, obs_detection=Obstacle.NONE):
-                    ret = self.move(distA)
+                    ret = self._move(distA)
                     if ret.type == Event.BLOCKAGE:
                         return ret
         with MotorConfig(self,vmax=speed):
             with ObstacleConfig(self, precision=1, blockage=Blockage.ANY, obs_detection=Obstacle.NONE):
-                ret = self.move(distB)
+                ret = self._move(distB)
                 self.stop(True)
                 return ret
     def cap(self, new_angle, rayon=0):
@@ -243,7 +270,7 @@ class Navigation(object):
             with MotorConfig(self, (accA, accB), (vmaxA, vmaxB)):
                 self.motors.move(mA * self.mm_to_step , mB * self.mm_to_step)
                 print "turn", angle, rayon 
-                ret = self.waitForEvent(precision=0.5)
+                ret = self.waitForEvent(precision=0.5, obs_detection=0)
                 error_angle = new_angle - self.angle 
                 print "error cap",  error_angle
                 if abs(error_angle) < 0.02 or nbtry == 0:
@@ -251,10 +278,14 @@ class Navigation(object):
                 nbtry = nbtry -1
                 angle = error_angle
     
-    def stop(self, emergency=False):
+    def stop(self, emergency=False, backward=False):
         print "stop", emergency
         if emergency == True:
-            with MotorConfig(self, (6000,6000)):
+            if backward:
+                conf = (1000,1000)
+            else:
+                conf = (3500,3500)
+            with MotorConfig(self, conf):
                 self.motors.stop()
                 self.waitForEvent(precision=2, blockage=Blockage.NONE, obs_detection=Obstacle.NONE)
         else:
@@ -323,11 +354,28 @@ class Navigation(object):
     def angle(self, angle):
         self.odo.angle = angle
     
+    def simpleEventReaction(self, event, prev_action):
+        print EventReaction.to_string[prev_action]
+        if event.type == Event.PRECISION:
+            return
+        if prev_action == EventReaction.MOVING_BACKWARD:
+            self.stop(True,True)
+        else:
+            self.stop(True)
+        dist = 50
+        if prev_action == EventReaction.MOVING_FORWARD:
+            dist = -dist
+        with ObstacleConfig(self, 1, Blockage.NONE, Obstacle.NONE):
+            self._move(dist)
+    
     def eventReaction(self, event, prev_action):
         print EventReaction.to_string[prev_action]
         if event.type == Event.PRECISION:
             return
-        self.stop(True)
+        if prev_action == EventReaction.MOVING_BACKWARD:
+            self.stop(True,True)
+        else:
+            self.stop(True)
         angle = math.pi / 8
         dist = 50
         rayon = self.rayon
@@ -372,10 +420,10 @@ class Navigation(object):
             if event.value & Obstacle.RIGHT:
                 angle = -angle
                 dist = -dist
-            if event.value & Obstacle.LEFT:
-                pass
+            elif event.value & Obstacle.LEFT:
+                dist = -dist
             if event.value & Obstacle.BACK:
-                pass
+                angle = 0
             with MotorConfig(self, (300,300), (300,300)):
                 with ObstacleConfig(self, 1, Blockage.NONE, Obstacle.NONE):
                     self.turn(angle, rayon)
@@ -412,9 +460,9 @@ class Navigation(object):
                 rot_rayon = -rot_rayon
         ev = self.turn(diff_angle, rot_rayon)
         if (diff_angle > 0.0):
-            self.eventReaction(ev, EventReaction.TURN_LEFT)
+            self.simpleEventReaction(ev, EventReaction.TURN_LEFT)
         else:
-            self.eventReaction(ev, EventReaction.TURN_RIGHT)    
+            self.simpleEventReaction(ev, EventReaction.TURN_RIGHT)    
         if ev.type is not Event.PRECISION:
             return ev
         if rotate_only:
@@ -426,11 +474,11 @@ class Navigation(object):
             dist = 0.0
         if recule:
             dist = -dist
-        ev = self.move(dist)
+        ev = self._move(dist)
         if (dist > 0.0):
-            self.eventReaction(ev, EventReaction.MOVING_FORWARD)
+            self.simpleEventReaction(ev, EventReaction.MOVING_FORWARD)
         else:
-            self.eventReaction(ev, EventReaction.MOVING_BACKWARD)  
+            self.simpleEventReaction(ev, EventReaction.MOVING_BACKWARD)  
         return ev
 class EventReaction():
     NO = 0

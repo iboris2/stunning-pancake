@@ -4,7 +4,7 @@ class IrSensor(object):
     CMD_GET_IR_A = 0x25
     CMD_GET_IR_B = 0x26
 
-    def __init__(self, i2c, slave, name = 'A', threshold = 700):
+    def __init__(self, i2c, slave, name = 'A', threshold = 200):
         self.i2c = i2c
         self.slave = slave
         self.name = name
@@ -32,8 +32,8 @@ class Obstacle(object):
     BACK = 4
     BOTH = FRONT | BACK
     def __init__(self, i2c):
-        self.ir_right = IrSensor(i2c, 12, 'A')
-        self.ir_left = IrSensor(i2c, 12, 'B')
+        self.ir_right = IrSensor(i2c, 12, 'B')
+        self.ir_left = IrSensor(i2c, 12, 'A')
         self.ir_back = IrSensor(i2c, 14, 'A')
     
     def obstacleDetected(self, direction = 3):

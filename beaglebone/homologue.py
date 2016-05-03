@@ -16,6 +16,7 @@ import robot
 import threading
 import math
 from vector import *
+import gametimer
 
 class myi2c(object):
     def __init__(self, i2c, id=0):
@@ -90,6 +91,11 @@ def prepare_tower(big):
 
 def fish(spot=0):
     print "fish"
+    if strategy == 4:
+        if spot == 0:
+            spot = 1
+        else:
+            spot = 0
     n.goto(play.fish_spot[spot])
     n.cap(math.pi)
     n.move_contact(0,-play.fish_spot_contact+40)
@@ -111,6 +117,7 @@ g = gobgob.Gobgob(s)
 n = Navigation(motor.StepperBlock(s),evitement.Obstacle(s)) 
 a = actuator.Actuator(s2)
 n.motors.disable()
+gt = gametimer.GameTimer(g, a, n, s, s2)
 ihm = Ihm()
 color, strategy = ihm.prepare()
 play = Playground(color)
@@ -119,13 +126,18 @@ n.position = play.start_pos
 n.angle = play.start_angle
 print "start pos", n.position, n.angle
 with MotorConfig(n, 200, 150):
-    n.move(20)
+    n.move(22)
+a.poisson.close()
 n.motors.disable()
 g.calibration()
-ihm.wait_starter()
-print "ma position"
-print n.position
+
+#base config
 n.blockage = Blockage.NONE
+n.obs_detection = 7
+
+ihm.wait_starter()
+
+gt.start()
 
 g.clamp(150, play.clampColor(38),85)
 #g.up(80)
@@ -147,20 +159,42 @@ with MotorConfig(n, 300, 220):
 
     n.move_contact(0, dist_bord-30)
     g.clamp(240)
-    n.move(-740)
+    n.move(-400)
     
 #shell
 g.clamp(300,0)
-toto()
-if strategy == 0:
-    offset = -100
+
+offset = -100
+if strategy == 0: 
     n.goto(pos = play.seasheel[2], offset=offset)
     n.goto(pos = play.seasheel[1],rot_rayon=120, offset=offset, rotate_only=True)
     n.goto(pos = play.seasheel[1], offset=offset)
     n.goto(pos = play.seasheel[0],rot_rayon=80, offset=offset, rotate_only=True)
     n.goto(pos = play.seasheel[0], offset=offset)
-    n.goto(pos = play.seasheel_collect, offset=offset)
-    n.cap(play.capColor(math.pi/2),60)
+if strategy == 1:
+    n.goto(pos = play.seasheel[3], offset=offset)
+    n.goto(pos = play.seasheel[2],rot_rayon=120, offset=offset, rotate_only=True)  
+    n.goto(pos = play.seasheel[2], offset=offset)
+    n.goto(pos = play.seasheel[1],rot_rayon=120, offset=offset, rotate_only=True)
+    n.goto(pos = play.seasheel[1], offset=offset)
+    n.goto(pos = play.seasheel[0],rot_rayon=80, offset=offset, rotate_only=True)
+    n.goto(pos = play.seasheel[0], offset=offset)
+if strategy == 2 or strategy == 3:
+    n.goto(pos = play.seasheel[4], offset=offset)
+    n.goto(pos = play.seasheel[3],rot_rayon=120, offset=offset, rotate_only=True)
+    n.goto(pos = play.seasheel[3], offset=offset)
+    n.goto(pos = play.seasheel[2],rot_rayon=120, offset=offset, rotate_only=True)  
+    n.goto(pos = play.seasheel[2], offset=offset)
+    n.goto(pos = play.seasheel_collect,rot_rayon=120, offset=offset, rotate_only=True)
+if strategy == 4:
+    n.goto(pos = play.seasheel[2], offset=offset)
+    n.goto(pos = play.seasheel[0],rot_rayon=80, offset=offset, rotate_only=True)
+    n.goto(pos = play.seasheel[0], offset=offset)
+    
+n.goto(pos = play.seasheel_collect, offset=offset)
+n.cap(play.capColor(math.pi/2),60)
+if strategy == 2 or strategy == 3:
+    n.move_contact(0,45)
 
 n.move(-200)
 
@@ -208,7 +242,7 @@ with MotorConfig(n, 300, 220):
 n.move(-350)
 
 #goto fish
-g.addJob(lambda: g.clamp(70,0,65)) 
+g.addJob(lambda: g.clamp(70,0,115)) 
 fish(0)
 fish(1)
     
