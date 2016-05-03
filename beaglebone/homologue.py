@@ -3,7 +3,7 @@ readline.parse_and_bind('tab:complete')
 
 
 import sys, time
-sys.path.append('library')
+sys.path.append('/root/bb/library')
 from playground import *
 from ihm import *
 from navigation import *
@@ -119,6 +119,8 @@ a = actuator.Actuator(s2)
 n.motors.disable()
 gt = gametimer.GameTimer(g, a, n, s, s2)
 ihm = Ihm()
+
+
 color, strategy = ihm.prepare()
 play = Playground(color)
 play.config(strategy)
@@ -250,8 +252,9 @@ fish(1)
 
 n.motors.disable()
 g.disable()
-toto()
-deposeBig()
+while(1):
+    time.sleep(1)
+
 with ObstacleConfig(n, blockage = Blockage.NONE):
     with MotorConfig(n, 400, 220):
         n.move(100)
