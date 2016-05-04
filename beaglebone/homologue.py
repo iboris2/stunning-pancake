@@ -66,28 +66,27 @@ def prepare_big():
     prepare_tower(1)
        
 def prepare_tower(big):
-    with MotorConfig(n, 400, 220):
+    if big:
+        offset_h = 60
+        side = -1
+    else:
+        offset_h = 0
+        side = 1        
+    g.clamp(61)
+    g.up(90+offset_h)
+    g.clamp(61, play.clampColor(-95)*side)
+    g.up(10)
+    g.clamp(e=103,H=15)
+    g.up(20)
+    n.move(-130)
+    prev = 100
+    g.clamp(prev + 180, play.clampColor(-95 +180/2.0)*side)
+    with MotorConfig(n, 320, 220):
+        dist = 102+30
         if big:
-            offset_h = 60
-            side = -1
-        else:
-            offset_h = 0
-            side = 1        
-        g.clamp(61)
-        g.up(90+offset_h)
-        g.clamp(61, play.clampColor(-95)*side)
-        g.up(10)
-        g.clamp(e=103,H=15)
-        g.up(20)
-        n.move(-130)
-        prev = 100
-        g.clamp(prev + 180, play.clampColor(-95 +180/2.0)*side)
-        with MotorConfig(n, 280, 220):
-            dist = 102+30
-            if big:
-                dist += 35
-            n.move(dist)
-            g.clamp(185,0)
+            dist += 35
+        n.move(dist)
+        g.clamp(185,0)
 
 def fish(spot=0):
     print "fish"
@@ -98,20 +97,20 @@ def fish(spot=0):
             spot = 0
     n.goto(play.fish_spot[spot])
     n.cap(math.pi)
-    n.move_contact(0,-play.fish_spot_contact+40)
+    n.move_contact(0,-play.fish_spot_contact)
     a.poisson.down()
-    with MotorConfig(n, 350, 220):
+    with MotorConfig(n, 600, 500):
         n.move(30)
         n.move(-30)
         a.poisson.up()
-        n.move(30)
-        n.goto(play.depose_spot[spot],robot.rot_rayon)
+        n.move(150)
+        n.goto(play.depose_spot[spot],80)
         n.cap(math.pi)
         x,y = n.position
-        n.move_contact(0,(1500-x) - robot.dist_back + 80 )
+        n.move_contact(0,x-1500)
         a.poisson.release()
         n.move(250)
-        a.poisson.up()#async
+        a.poisson.speedUp()#async
 
 g = gobgob.Gobgob(s)
 n = Navigation(motor.StepperBlock(s),evitement.Obstacle(s)) 
@@ -133,40 +132,40 @@ a.poisson.close()
 n.motors.disable()
 g.calibration()
 
-#base config
+##  #base config
 n.blockage = Blockage.NONE
-n.obs_detection = 7
-
+n.max_speed = 700
+n.acc = 595
 ihm.wait_starter()
 
 gt.start()
 
-g.clamp(150, play.clampColor(38),85)
+g.addJob(lambda: g.clamp(290, 0,20))
+
 #g.up(80)
 #g.clamp(150, play.clampColor(-38),85+60)
 sand = Vector(play.sand[0])
-sand += play.vectorColor((30, robot.dist_front + 35))
+sand += play.vectorColor((0, robot.dist_clamp + 35))
 n.goto(sand)
 print "ma position"
 print n.position
 n.cap(play.capColor(-math.pi/2))
 
 with MotorConfig(n, 270, 220):
-    n.move(100+20)
-prepare_small()
-dist_bord = 280
-with MotorConfig(n, 300, 220):
-    n.goto(Vector(play.build_area[1]) + play.vectorColor((-200,dist_bord + robot.dist_block)),robot.rot_rayon)   
-    n.cap(play.capColor(-math.pi/2),robot.rot_rayon)
+    n.move(90)
+#close clamp
+    g.clamp(120, 0,20)
+#prepare_small()
+dist_bord = 290
+with MotorConfig(n, 510, 220):
+    n.goto(Vector(play.build_area[1]) + play.vectorColor((-210,dist_bord + robot.dist_block)),robot.rot_rayon)   
+    n.cap(play.capColor(-math.pi/2),40)
+    g.addJob(lambda: g.clamp(280))
+    g.addJob(lambda: g.clamp(300,0,20))
+    time.sleep(0.6)
+n.move(-400)
 
-    n.move_contact(0, dist_bord-30)
-    g.clamp(240)
-    n.move(-400)
-    
-#shell
-g.clamp(300,0)
-
-offset = -100
+offset = -92
 if strategy == 0: 
     n.goto(pos = play.seasheel[2], offset=offset)
     n.goto(pos = play.seasheel[1],rot_rayon=120, offset=offset, rotate_only=True)
@@ -174,7 +173,7 @@ if strategy == 0:
     n.goto(pos = play.seasheel[0],rot_rayon=80, offset=offset, rotate_only=True)
     n.goto(pos = play.seasheel[0], offset=offset)
 if strategy == 1:
-    n.goto(pos = play.seasheel[3], offset=offset)
+    n.goto(pos = play.seasheel[3], offset=20)
     n.goto(pos = play.seasheel[2],rot_rayon=120, offset=offset, rotate_only=True)  
     n.goto(pos = play.seasheel[2], offset=offset)
     n.goto(pos = play.seasheel[1],rot_rayon=120, offset=offset, rotate_only=True)
@@ -182,7 +181,7 @@ if strategy == 1:
     n.goto(pos = play.seasheel[0],rot_rayon=80, offset=offset, rotate_only=True)
     n.goto(pos = play.seasheel[0], offset=offset)
 if strategy == 2 or strategy == 3:
-    n.goto(pos = play.seasheel[4], offset=offset)
+    n.goto(pos = play.seasheel[4], offset=20)
     n.goto(pos = play.seasheel[3],rot_rayon=120, offset=offset, rotate_only=True)
     n.goto(pos = play.seasheel[3], offset=offset)
     n.goto(pos = play.seasheel[2],rot_rayon=120, offset=offset, rotate_only=True)  
@@ -204,19 +203,27 @@ n.move(-200)
 #close hut
 n.reculeto(play.close_hut)
 n.cap(0)
-with MotorConfig(n, 300, 220): 
+with MotorConfig(n, 340, 400): 
     n.move_contact(0, -90)
     n.cap(0)
     n.move_contact(0, -50)
 n.move(350)
 
+    
+#goto fish
+g.addJob(lambda: g.clamp(70,0,115))
+fish(0)
+fish(1)
+
 #goto next block
+n.goto(play.vectorColor((1450,910)))
+n.goto(play.vectorColor((650,910)))
 n.goto(Vector(play.sand[1])+Vector(420,0))
 n.cap(-math.pi)
 x,y = n.position
 print x, "cm du bord", y
-g.clamp(294,play.clampColor(-15),55)
-with MotorConfig(n, 230, 220): 
+g.clamp(300,play.clampColor(-14),55)
+with MotorConfig(n, 500, 500): 
     n.move_contact(0, x - robot.dist_block + 20)
     n.move(-2)
     prev = 292
@@ -224,29 +231,24 @@ with MotorConfig(n, 230, 220):
     g.clamp(suiv, play.clampColor(-15 +(suiv-prev)/2.0), 55)
     g.up(20)
     g.clamp(120)
-    n.move(-190)
+    x,y = n.position
+    target = 400
+    n.move(x - target)
     n.turn(play.capColor(math.pi),play.capColor(robot.rayon-25))
     n.cap(play.capColor(0), -(robot.rayon-25))
     g.clamp(120,0)
     #got to depose
-    n.goto(play.vectorColor((play.build_area[1][0]-200 - 65, 1050)))
+    n.goto(play.vectorColor((play.build_area[1][0]-200 - 140, 1050)))
     n.cap(play.capColor(-math.pi/2))
     g.clamp(190)
     g.up(140)
     prepare_big()
-    dist_bord = 280 + 120
-with MotorConfig(n, 300, 220):
-    n.goto(Vector(play.build_area[1]) + play.vectorColor((-200 - 65,dist_bord + robot.dist_block)),robot.rot_rayon)   
-    n.cap(play.capColor(-math.pi/2),robot.rot_rayon)
-
-    n.move_contact(0, dist_bord)
+    dist_bord = 280 + 130
+with MotorConfig(n, 520, 520):
+    n.goto(Vector(play.build_area[1]) + play.vectorColor((-210 - 140,dist_bord + robot.dist_block)),robot.rot_rayon)   
+    n.cap(play.capColor(-math.pi/2-0.1),40)
     g.clamp(240)
-n.move(-350)
-
-#goto fish
-g.addJob(lambda: g.clamp(70,0,115)) 
-fish(0)
-fish(1)
+    n.move(-190)
     
     
 

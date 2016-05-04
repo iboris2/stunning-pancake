@@ -57,14 +57,14 @@ class Playground(object):
         ecart_bord = 180
         ecart_spot = 150
         self.depose_spot = [
-                          [2000, (550 - ecart_bord) * invert],                    
-                          [2000, (550 - ecart_bord - ecart_spot) * invert]
+                          [2000-250, (550 - ecart_bord) * invert],                    
+                          [2000-250, (550 - ecart_bord - ecart_spot) * invert]
                           ]
         
         #sand
         self.sand = [
                      [900, 850 * invert],
-                     [58, 668 * invert],
+                     [58, 666 * invert],
                      [58 * 2, 0]
                      ]
         

@@ -15,6 +15,9 @@ class Poisson(object):
 
     def up(self):
         self.servo.move(Poisson.UP)
+        
+    def speedUp(self):
+        self.servo.angle = Poisson.UP
     
     def down(self):
         self.servo.angle = Poisson.DOWN

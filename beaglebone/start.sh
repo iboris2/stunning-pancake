@@ -1,2 +1,2 @@
 #!/bin/sh
-/usr/bin/python /root/bb/homologue.py
+/usr/bin/python /root/bb/homologue.py > /tmp/log
