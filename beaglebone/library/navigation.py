@@ -253,8 +253,17 @@ class Navigation(object):
             mA = angle * (rayon + self.rayon)
             mB = angle * (rayon - self.rayon)
             # compute speed and acc
+            if abs(rayon) < 50:
+                boost = 1.22
+            else:
+                boost = 1.0
             vmaxA, vmaxB = self.max_speed
+            vmaxA = max(vmaxA,vmaxB)
+            vmaxB = vmaxA
             accA, accB = self.acc
+            accA = max(accA,accB) * boost
+            accB = accA
+
             absA = abs(mA)
             absB = abs(mB)
             if absA > absB:

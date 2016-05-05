@@ -80,7 +80,7 @@ class Servo(object):
         self.i2c.write(self.slave, [self.low_addr, pwm & 0xff])
         self.i2c.write(self.slave, [self.high_addr, pwm >> 8])
     
-    def configure(self, speed=85.0, acc=12.0, angle_min = -90, angle_max = 90, pw_min=300, pw_max=600):
+    def configure(self, speed=85.0, acc=80.0, angle_min = -90, angle_max = 90, pw_min=300, pw_max=600):
         self.speed = speed
         self.acc = acc
         self.angle_min = angle_min

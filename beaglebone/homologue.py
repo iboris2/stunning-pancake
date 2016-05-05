@@ -106,15 +106,15 @@ def fish(spot=0):
         n.turn(play.capColor(0.1),0,0)
         a.poisson.up()
         n.move(190)
-        if strategy == 4:
-            if spot == 0:
-                spot = 1
-            else:
-                spot = 0
-        n.goto(play.depose_spot[spot],30)
-        n.cap(math.pi)
+        if strategy == 4 or strategy == 0:
+            if spot == 1:
+                n.goto(Vector(play.depose_spot[spot]) + play.vectorColor((0,-140)),30)
+                n.move(-140)
+        else:
+            n.goto(play.depose_spot[spot],30)
+        n.cap(math.pi, -35)
         x,y = n.position
-        with MotorConfig(n, 470, 520):
+        with MotorConfig(n, 300, 520):
             n.move_contact(0,x-2000)
             a.poisson.release()
         n.move(250)
@@ -168,14 +168,14 @@ with MotorConfig(n, 290, 240):
     n.move(70)
 #prepare_small()
 dist_bord = 300
-with MotorConfig(n, 590, 280):
+with MotorConfig(n, 515, 420):
     n.goto(Vector(play.build_area[1]) + play.vectorColor((-210,dist_bord + robot.dist_block)),robot.rot_rayon)   
     n.cap(play.capColor(-math.pi/2),40)
-    n.move(35)
+    n.move(175)
     g.addJob(lambda: g.clamp(280))
     g.addJob(lambda: g.clamp(300,0,20))
     time.sleep(0.6)
-n.move(-390)
+n.move(-310)
 
 offset = -104
 if strategy == 0: 
@@ -235,34 +235,29 @@ n.acc = 735
 #goto next block
 n.goto(play.vectorColor((1450,910)))
 n.goto(play.vectorColor((650,910)))
-g.addJob(lambda: g.clamp(300,play.clampColor(-14),80+120))
-n.goto(Vector(play.sand[1])+Vector(420,0))
-n.cap(-math.pi)
+g.addJob(lambda: g.clamp(300,0,45))
+n.goto(Vector(play.sand[1])+Vector(450,0))
+n.cap(play.capColor(-math.pi))
 x,y = n.position
 print x, "cm du bord", y
 
-with MotorConfig(n, 590, 590): 
+with MotorConfig(n, 590, 650): 
     n.move_contact(0, x - robot.dist_block + 50)
-    g.addJob(lambda: n.move(-2))
-    prev = 292
-    suiv = 60
-    g.clamp(suiv, play.clampColor(-15 +(suiv-prev)/2.0), 80+120)
+    g.clamp(120,play.clampColor(-70),45)
+    g.up(45+40)
     g.addJob(lambda: g.clamp(e=60, H=80+120+5))
 x,y = n.position
-target = 350
+target = 390
 n.move(x - target)
 with MotorConfig(navigation=n, acc=900):
-    with ObstacleConfig(navigation=n, blockage=Blockage.ANY):
-        n.turn(play.capColor(-math.pi/2),play.capColor(robot.rayon-25)) 
-        n.reculeto(play.vectorColor((play.build_area[1][0]-200 - 150, 1050)), 60)
-        g.addJob(lambda: g.up(20))
-        gt.openClampEnd(100)
+    n.turn(play.capColor(math.pi/2),play.capColor(robot.rot_rayon-50)) 
+    n.reculeto(play.vectorColor((play.build_area[1][0]-200 - 150, 1050)), -20 )
+    gt.openClampEnd(135)
 n.cap(play.capColor(-math.pi/2))
 x,y = n.position
-n.move(y-640)
-g.addJob(lambda: g.clamp(150))
-
-    
+n.move(abs(y)-625)
+g.up(40)
+g.clamp(135)
 
 n.motors.disable()
 g.disable()
