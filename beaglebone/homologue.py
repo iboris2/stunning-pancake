@@ -90,7 +90,7 @@ def prepare_tower(big):
 
 def fish(spot=0):
     print "fish"
-    if strategy == 4:
+    if strategy == 4 or strategy == 0:
         if spot == 0:
             spot = 1
         else:
@@ -238,7 +238,7 @@ try:
     #goto next block
     n.goto(play.vectorColor((1450,910)))
     n.goto(play.vectorColor((650,910)))
-    g.addJob(lambda: g.clamp(300,0,52))
+    g.addJob(lambda: g.clamp(320,0,55))
     n.goto(Vector(play.sand[1])+Vector(450,0))
     n.cap(play.capColor(-math.pi))
     x,y = n.position
@@ -246,9 +246,8 @@ try:
     
     with MotorConfig(n, 590, 650): 
         n.move_contact(0, x - robot.dist_block + 50)
-        g.clamp(120,play.clampColor(-70),52)
-        g.up(52+45)
-        g.addJob(lambda: g.clamp(e=60, H=80+120+5))
+        g.clamp(120,play.clampColor(-70),55)
+        g.up(52+48)
     x,y = n.position
     target = 375
     n.move(x - target)
@@ -256,12 +255,12 @@ try:
         n.turn(play.capColor(math.pi/2),play.capColor(robot.rot_rayon-50))
         n.move_contact(0, -50)
         n.reculeto(play.vectorColor((play.build_area[1][0]-200 - 150, 1050)), -20 )
-        gt.openClampEnd(200)
+        gt.openClampEnd(230)
     n.cap(play.capColor(-math.pi/2))
     x,y = n.position
+    g.addJob(lambda: g.up(55))
+    g.addJob(lambda: g.clamp(230))
     n.move(abs(y)-580)
-    g.up(40)
-    g.clamp(240)
     n.move(-40)
     print "END of programm"
 except:
