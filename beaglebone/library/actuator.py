@@ -27,7 +27,7 @@ class Poisson(object):
         self.servo.angle = Poisson.DOWN
 
     def release(self):
-        self.servo.move(Poisson.DOWN, 180,250)
+        self.servo.move(Poisson.DOWN, 195,270)
         self.servo.angle = Poisson.DOWN
         
     def disable(self):
@@ -42,6 +42,8 @@ class Umbrella(object):
         self.servo.disable()
     
     def open(self):
+        print "umbrella"
+        time.sleep(0.1)
         self.servo.angle = Umbrella.OPEN
         self.servo.angle = Umbrella.OPEN
     

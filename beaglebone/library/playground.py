@@ -55,7 +55,7 @@ class Playground(object):
                           [2000-ecart_fish_spot, 450 * invert]
                           ]
         ecart_bord = 200
-        ecart_spot = 100
+        ecart_spot = 60
         self.depose_spot = [
                           [2000-290, (550 - ecart_bord) * invert],                    
                           [2000-290, (550 - ecart_bord - ecart_spot) * invert]
@@ -64,7 +64,7 @@ class Playground(object):
         #sand
         self.sand = [
                      [900, 850 * invert],
-                     [58, 615 * invert],
+                     [58, 620 * invert],
                      [58 * 2, 0]
                      ]
         
