@@ -23,7 +23,7 @@ class Playground(object):
         self.all_seashell.append([1850, 800 * invert]) #4
        
         self.all_seashell.append([1450, 600 * invert]) #5
-        self.all_seashell.append([1650, 300 * invert]) #6
+        self.all_seashell.append([1650, 345 * invert]) #6
        
         self.all_seashell.append([1550, 0 * invert]) #7
         self.all_seashell.append([1850, 0 * invert]) #8
@@ -55,16 +55,16 @@ class Playground(object):
                           [2000-ecart_fish_spot, 450 * invert]
                           ]
         ecart_bord = 180
-        ecart_spot = 150
+        ecart_spot = 100
         self.depose_spot = [
-                          [2000-250, (550 - ecart_bord) * invert],                    
-                          [2000-250, (550 - ecart_bord - ecart_spot) * invert]
+                          [2000-290, (550 - ecart_bord) * invert],                    
+                          [2000-290, (550 - ecart_bord - ecart_spot) * invert]
                           ]
         
         #sand
         self.sand = [
                      [900, 850 * invert],
-                     [58, 666 * invert],
+                     [58, 659 * invert],
                      [58 * 2, 0]
                      ]
         

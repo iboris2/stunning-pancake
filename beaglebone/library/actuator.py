@@ -23,7 +23,7 @@ class Poisson(object):
         self.servo.angle = Poisson.DOWN
 
     def release(self):
-        self.servo.move(Poisson.DOWN, 150,90)
+        self.servo.move(Poisson.DOWN, 180,250)
 
 class Umbrella(object):
     OPEN = -28

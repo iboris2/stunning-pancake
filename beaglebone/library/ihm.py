@@ -135,6 +135,9 @@ class Display(TM1637):
         else:
             seg = Display.G
         self.set_segments([seg, 0])
+    
+    def hello(self):
+        self.set_segments([0b1001, 0b1001,0b1001,0b1001])
 
     def starter(self,value):
         if value == 1:
@@ -187,6 +190,7 @@ class Ihm(object):
         self.color = 'purple'
         self.strategy = 0
         self.time = time.time()
+        self.display.hello()
         self.display.color(self.color)
         self.display.strategy(self.strategy)
         self.mode = Ihm.IDLE
