@@ -24,6 +24,9 @@ class Poisson(object):
 
     def release(self):
         self.servo.move(Poisson.DOWN, 180,250)
+        
+    def disable(self):
+        self.servo.disable()
 
 class Umbrella(object):
     OPEN = -28

@@ -43,12 +43,12 @@ class Playground(object):
                           [2000, 1000 * invert],                    
                           [2000, 600 * invert]
                           ]
-        e = 70
+        e = 75
         ecart_fish_spot = 300
         self.fish_spot_contact = ecart_fish_spot - robot.dist_back + 30
         self.fish_spot = [
-                          [2000-ecart_fish_spot, (820 + e) * invert],                    
-                          [2000-ecart_fish_spot, (820 - e) * invert]
+                          [2000-ecart_fish_spot, (825 + e) * invert],                    
+                          [2000-ecart_fish_spot, (825 - e) * invert]
                           ]
         self._depose_area = [ 
                           [2000-ecart_fish_spot, 550 * invert],                    
@@ -64,7 +64,7 @@ class Playground(object):
         #sand
         self.sand = [
                      [900, 850 * invert],
-                     [58, 659 * invert],
+                     [58, 662 * invert],
                      [58 * 2, 0]
                      ]
         

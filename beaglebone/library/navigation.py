@@ -245,8 +245,7 @@ class Navigation(object):
         return self.turn(diff_angle, rayon)
             
 
-    def turn(self, angle, rayon=0):
-        nbtry = 2
+    def turn(self, angle, rayon=0, nbtry=2):
         new_angle = self.angle + angle
         while True:
             if angle == 0.0:
@@ -273,8 +272,10 @@ class Navigation(object):
                 ret = self.waitForEvent(precision=0.5, obs_detection=0)
                 error_angle = new_angle - self.angle 
                 print "error cap",  error_angle
-                if abs(error_angle) < 0.02 or nbtry == 0:
+                if abs(error_angle) < 0.02:
                     return ret
+                if nbtry <= 0:
+                    return Event(Event.BLOCKAGE, Blockage.RIGHT | Blockage.LEFT) 
                 nbtry = nbtry -1
                 angle = error_angle
     
