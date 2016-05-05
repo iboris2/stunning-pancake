@@ -175,7 +175,7 @@ with MotorConfig(n, 515, 420):
     g.addJob(lambda: g.clamp(280))
     g.addJob(lambda: g.clamp(300,0,20))
     time.sleep(0.6)
-n.move(-310)
+n.move(-300)
 
 offset = -104
 if strategy == 0: 
@@ -250,14 +250,16 @@ x,y = n.position
 target = 390
 n.move(x - target)
 with MotorConfig(navigation=n, acc=900):
-    n.turn(play.capColor(math.pi/2),play.capColor(robot.rot_rayon-50)) 
+    n.turn(play.capColor(math.pi/2),play.capColor(robot.rot_rayon-50))
+    n.move_contact(0, -50)
     n.reculeto(play.vectorColor((play.build_area[1][0]-200 - 150, 1050)), -20 )
-    gt.openClampEnd(135)
+    gt.openClampEnd(186)
 n.cap(play.capColor(-math.pi/2))
 x,y = n.position
-n.move(abs(y)-625)
+n.move(abs(y)-588)
 g.up(40)
-g.clamp(135)
+g.clamp(186)
+n.move(-40)
 
 n.motors.disable()
 g.disable()
