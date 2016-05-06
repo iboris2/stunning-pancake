@@ -144,6 +144,8 @@ class Navigation(object):
         self.blockage = Blockage.ANY
         self.obs_detection = Obstacle.NONE
         
+        self.boost_en = True
+        
     
     @property
     def max_speed(self):
@@ -171,8 +173,7 @@ class Navigation(object):
             a = (acc, acc)
         self.motors.acc = tuple([self.mm_to_step * x for x in a])
     
-    def move(self, mm):
-        nbtry = 2
+    def move(self, mm, nbtry = 2):
         while True:
             start = Vector(self.position)
             ev = self._move(mm)
@@ -253,8 +254,8 @@ class Navigation(object):
             mA = angle * (rayon + self.rayon)
             mB = angle * (rayon - self.rayon)
             # compute speed and acc
-            if abs(rayon) < 50:
-                boost = 1.22
+            if abs(rayon) < 50 and self.boost_en == True:
+                boost = 1.1
             else:
                 boost = 1.0
             vmaxA, vmaxB = self.max_speed
@@ -292,7 +293,7 @@ class Navigation(object):
         print "stop", emergency
         if emergency == True:
             if backward:
-                conf = (1000,1000)
+                conf = (1300,1300)
             else:
                 conf = (3500,3500)
             with MotorConfig(self, conf):

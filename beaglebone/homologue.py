@@ -93,23 +93,25 @@ def fish(spot=0):
     if strategy == 4 or strategy == 0:
         if spot == 0:
             spot = 1
-        else:
+        elif spot == 1:
             spot = 0
     n.goto(play.fish_spot[spot])
     n.cap(math.pi)
-    with MotorConfig(n, 400, 620):
+    with MotorConfig(n, 400, 600):
         n.move_contact(0,-play.fish_spot_contact)
     a.poisson.down()
-    with MotorConfig(n, 670, 600):
+    with MotorConfig(n, 400, 270):
+        n.boost_en = False
         n.move(30)
         n.move(-26)
-        n.turn(play.capColor(0.1),0,0)
+        if spot == 1: 
+            n.turn(play.capColor(0.1),0,0)
         a.poisson.up()
         n.move(190)
         if strategy == 4 or strategy == 0:
             if spot == 1:
-                n.goto(Vector(play.depose_spot[spot]) + play.vectorColor((0,-120)),30)
-                n.move(-120)
+                n.goto(Vector(play.depose_spot[spot]) + play.vectorColor((0,-130)),30)
+                n.move(-130)
             else:
                 n.goto(play.depose_spot[spot],30)
         else:
@@ -119,8 +121,10 @@ def fish(spot=0):
         with MotorConfig(n, 300, 520):
             n.move_contact(0,x-2000)
             a.poisson.release()
-        n.move(250)
-        a.poisson.speedUp()#async
+    n.move(250)
+    n.boost_en = True
+    time.sleep(0.1)
+    a.poisson.speedUp()#async
 
 g = gobgob.Gobgob(s)
 n = Navigation(motor.StepperBlock(s),evitement.Obstacle(s)) 
@@ -147,8 +151,8 @@ g.calibration()
 
 ##  #base config
 n.blockage = Blockage.NONE
-n.max_speed = 713
-n.acc = 700
+n.max_speed = 700
+n.acc = 680
 ihm.wait_starter()
 
 gt.start()
@@ -167,11 +171,11 @@ try:
     
     with MotorConfig(n, 290, 240):
         g.addJob(lambda: time.sleep(0.2))
-        g.addJob(lambda: g.clamp(120, 0,20))
+        g.addJob(lambda: g.clamp(122, 0,20))
         n.move(70)
     #prepare_small()
     dist_bord = 300
-    with MotorConfig(n, 515, 420):
+    with MotorConfig(n, 515, 180):
         n.goto(Vector(play.build_area[1]) + play.vectorColor((-210,dist_bord + robot.dist_block)),robot.rot_rayon)   
         n.cap(play.capColor(-math.pi/2),40)
         n.move(175)
@@ -230,38 +234,40 @@ try:
     g.addJob(lambda: g.clamp(70,0,115))
     fish(0)
     fish(1)
+    fish(2)
+    fish(3)
     
     
-    n.max_speed = 710
-    n.acc = 735
-    
-    #goto next block
-    n.goto(play.vectorColor((1450,910)))
-    n.goto(play.vectorColor((650,910)))
-    g.addJob(lambda: g.clamp(320,0,55))
-    n.goto(Vector(play.sand[1])+Vector(450,0))
-    n.cap(play.capColor(-math.pi))
-    x,y = n.position
-    print x, "cm du bord", y
-    
-    with MotorConfig(n, 590, 650): 
-        n.move_contact(0, x - robot.dist_block + 50)
-        g.clamp(120,play.clampColor(-70),55)
-        g.up(52+48)
-    x,y = n.position
-    target = 375
-    n.move(x - target)
-    with MotorConfig(navigation=n, acc=950):
-        n.turn(play.capColor(math.pi/2),play.capColor(robot.rot_rayon-50))
-        n.move_contact(0, -50)
-        n.reculeto(play.vectorColor((play.build_area[1][0]-200 - 150, 1050)), -20 )
-        gt.openClampEnd(230)
-    n.cap(play.capColor(-math.pi/2))
-    x,y = n.position
-    g.addJob(lambda: g.up(55))
-    g.addJob(lambda: g.clamp(230))
-    n.move(abs(y)-580)
-    n.move(-40)
+#     n.max_speed = 710
+#     n.acc = 735
+#     
+#     #goto next block
+#     n.goto(play.vectorColor((1450,910)))
+#     n.goto(play.vectorColor((650,910)))
+#     g.addJob(lambda: g.clamp(320,0,55))
+#     n.goto(Vector(play.sand[1])+Vector(450,0))
+#     n.cap(play.capColor(-math.pi))
+#     x,y = n.position
+#     print x, "cm du bord", y
+#     
+#     with MotorConfig(n, 590, 650): 
+#         n.move_contact(0, x - robot.dist_block + 50)
+#         g.clamp(120,play.clampColor(-70),55)
+#         g.up(52+48)
+#     x,y = n.position
+#     target = 375
+#     n.move(x - target)
+#     with MotorConfig(navigation=n, acc=950):
+#         n.turn(play.capColor(math.pi/2),play.capColor(robot.rot_rayon-50))
+#         n.move_contact(0, -50)
+#         n.reculeto(play.vectorColor((play.build_area[1][0]-200 - 150, 1050)), -20 )
+#         gt.openClampEnd(230)
+#     n.cap(play.capColor(-math.pi/2))
+#     x,y = n.position
+#     g.addJob(lambda: g.up(55))
+#     g.addJob(lambda: g.clamp(230))
+#     n.move(abs(y)-580)
+#     n.move(-40)
     print "END of programm"
 except:
     pass 

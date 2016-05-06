@@ -37,27 +37,32 @@ class Playground(object):
                     [0, 1200 * invert],
                     [0, 900 * invert] 
                     ]
-        self.close_hut = (110, (1200+900)* invert/2.0)
+        self.close_hut = (110,20 + (1200+900)* invert/2.0)
         #fish spot
         self._fish_area = [ 
                           [2000, 1000 * invert],                    
                           [2000, 600 * invert]
                           ]
-        e = 75
+        e = 70
+        f = 90
         ecart_fish_spot = 300
         self.fish_spot_contact = ecart_fish_spot - robot.dist_back + 30
         self.fish_spot = [
-                          [2000-ecart_fish_spot, (825 + e) * invert],                    
-                          [2000-ecart_fish_spot, (825 - e) * invert]
+                          [2000-ecart_fish_spot, (800 + e) * invert],                    
+                          [2000-ecart_fish_spot, (800 - e) * invert],
+                          [2000-ecart_fish_spot, (800 + f+20) * invert],                    
+                          [2000-ecart_fish_spot, (800 - f) * invert]
                           ]
         self._depose_area = [ 
                           [2000-ecart_fish_spot, 550 * invert],                    
                           [2000-ecart_fish_spot, 450 * invert]
                           ]
-        ecart_bord = 200
-        ecart_spot = 60
+        ecart_bord = 205
+        ecart_spot = 10
         self.depose_spot = [
                           [2000-290, (550 - ecart_bord) * invert],                    
+                          [2000-290, (550 - ecart_bord - ecart_spot - 20) * invert],
+                          [2000-290, (550 - ecart_bord - ecart_spot) * invert],                    
                           [2000-290, (550 - ecart_bord - ecart_spot) * invert]
                           ]
         
